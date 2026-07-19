@@ -1,0 +1,16 @@
+# ACHTUNG: js/seed.js enthält aus der Original-Excel abgeleitete Beispieldaten
+# (echte Empfänger/Beträge/eine Vertragskontonummer). Dieses Repository darf
+# deshalb NIEMALS öffentlich gestellt werden, ohne seed.js vorher durch rein
+# synthetische Daten zu ersetzen.
+
+# Abhängigkeiten & Build-Ausgaben (werden aus dem Quellcode erzeugt)
+node_modules/
+dist/
+src-tauri/target/
+
+# macOS-Kram
+.DS_Store
+
+# lokale Versand-/Arbeitsdateien
+Archiv.zip
+*.zip

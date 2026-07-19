@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0D1220">
+<title>Finanzplanung · Cockpit</title>
+<!--STYLES-->
+</head>
+<body>
+<div id="app" class="app"></div>
+<div id="toasts"></div>
+<!--SCRIPTS-->
+<script>
+(function () {
+  function boot() {
+    Store.init(function (info) {
+      UI.buildShell();
+      UI.render();
+      if (window.NativeGlue) NativeGlue.afterBoot(info);
+    });
+  }
+  // Mac-App: erst Touch-ID-Sperre, dann Daten laden. Web: direkt starten.
+  if (window.NativeGlue && NativeGlue.requiresUnlock()) NativeGlue.unlock(boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

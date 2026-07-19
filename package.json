@@ -1,0 +1,14 @@
+{
+  "name": "finanzplanung",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Finanzplanung · Cockpit — Web-App + macOS-App (Tauri)",
+  "scripts": {
+    "build": "node build.js",
+    "test": "node test/logic.test.js",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}
