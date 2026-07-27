@@ -303,7 +303,7 @@
       key: "dash.monate", title: "Monatsübersicht",
       hint: months.length + " Monate · Werte = bereits gebucht + noch erwartet · 👁 blendet einen Monat aus", defaultOpen: true
     }, function (body) {
-      var trs = months.map(function (mk) {
+      var trs = months.map(function (mk, mi) {
         var c = cockpits[mk];
         var isCur = mk === cur;
         var isFuture = Logic.cmpMonth(mk, cur) > 0;
@@ -315,8 +315,10 @@
           td(el("div", { style: "display:flex;align-items:center;gap:4px" },
             el("button", { class: "btn sm ghost", style: "font-family:var(--mono)", onclick: function () { UI.go("monat", { month: mk }); } }, U.monthLabel(mk, true)),
             isFuture ? el("span", { class: "pill", title: "Zukunft: reine Prognose aus erwarteten Posten + Planung" }, "Prognose") : null)),
-          // Alle-Konten-Prognose, sobald ein Kontostand eingetragen ist (sonst = Spaltensumme)
-          td(UI.money(c.prognoseGesamt), "r num"),
+          // Saldo = dieselbe verankerte Fortschreibung wie die Verlaufskurve: Monate mit
+          // eingetragenem Kontostand zeigen ihre Alle-Konten-Prognose, alle folgenden
+          // rollen den Anker mit ihrem Monats-Saldo weiter (vals aus dem Chart oben).
+          td(UI.money(vals[mi]), "r num"),
           td(UI.money(einn), "r num"),
           td(UI.money(c.variableSum), "r num"),
           td(UI.money(fix), "r num"),

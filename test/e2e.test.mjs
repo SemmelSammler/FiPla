@@ -1358,6 +1358,13 @@ console.log("\n== AD) Design-Nachbesserung Runde 2: Sonderposten-Tabelle bei hal
   const rowAF = [...d.querySelectorAll("#view tr")].find(r => r.textContent.includes(w.U.monthLabel(next, true)));
   ok(!!rowAF, "Monatsübersicht-Tabelle hat eine Zeile für den Folgemonat");
   ok(rowAF.textContent.includes(w.U.eur(ccN.prognoseGesamt)), "Tabellen-Saldo zeigt die Alle-Konten-Prognose");
+  // … und die Monate danach rollen den Anker weiter: Saldo = Anker + eigener Monats-Saldo
+  const n2 = w.Logic.nextMonth(next);
+  const ccN2 = w.Logic.monthCockpit(w.Store.get(), n2);
+  const erwartetN2 = Math.round((ccN.prognoseGesamt + ccN2.prognoseSaldo) * 100) / 100;
+  const rowAF2 = [...d.querySelectorAll("#view tr")].find(r => r.textContent.includes(w.U.monthLabel(n2, true)));
+  ok(!!rowAF2, "Tabelle hat eine Zeile für den übernächsten Monat");
+  ok(rowAF2.textContent.includes(w.U.eur(erwartetN2)), "Folgemonat rollt den Anker weiter (Anker + Monats-Saldo), statt leer zu sein");
   // Heute-Knopf springt zurück
   const heute = [...d.querySelectorAll("#view .card-title button")].find(b => b.textContent === "Heute");
   ok(!!heute, "Heute-Knopf erscheint bei nicht-aktuellem Monat");
