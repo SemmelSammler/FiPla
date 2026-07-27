@@ -1358,13 +1358,18 @@ console.log("\n== AD) Design-Nachbesserung Runde 2: Sonderposten-Tabelle bei hal
   const rowAF = [...d.querySelectorAll("#view tr")].find(r => r.textContent.includes(w.U.monthLabel(next, true)));
   ok(!!rowAF, "Monatsübersicht-Tabelle hat eine Zeile für den Folgemonat");
   ok(rowAF.textContent.includes(w.U.eur(ccN.prognoseGesamt)), "Tabellen-Saldo zeigt die Alle-Konten-Prognose");
-  // … und die Monate danach rollen den Anker weiter: Saldo = Anker + eigener Monats-Saldo
+  // Monate OHNE Kontostand zeigen ihren EIGENEN Monats-Prognosewert (nie kumuliert, nie leer)
   const n2 = w.Logic.nextMonth(next);
   const ccN2 = w.Logic.monthCockpit(w.Store.get(), n2);
-  const erwartetN2 = Math.round((ccN.prognoseGesamt + ccN2.prognoseSaldo) * 100) / 100;
+  ok(ccN2.prognoseGesamt == null, "Testaufbau: übernächster Monat hat keinen Kontostand");
   const rowAF2 = [...d.querySelectorAll("#view tr")].find(r => r.textContent.includes(w.U.monthLabel(n2, true)));
   ok(!!rowAF2, "Tabelle hat eine Zeile für den übernächsten Monat");
-  ok(rowAF2.textContent.includes(w.U.eur(erwartetN2)), "Folgemonat rollt den Anker weiter (Anker + Monats-Saldo), statt leer zu sein");
+  ok(rowAF2.textContent.includes(w.U.eur(ccN2.prognoseSaldo)), "Monat ohne Kontostand zeigt seinen eigenen Prognose-Saldo");
+  // Hero fällt ohne Kontostand auf die Monats-Prognose zurück statt leer zu sein
+  const selAF2 = d.querySelector("#view .card-title select");
+  selAF2.value = n2; selAF2.dispatchEvent(new w.Event("change", { bubbles: true }));
+  const heroTxt2 = d.querySelector("#view .dash-hero-num").textContent;
+  ok(heroTxt2 === w.U.eur(ccN2.prognoseSaldo), "Hero zeigt ohne Kontostand die Monats-Prognose, kein leerer Strich");
   // Heute-Knopf springt zurück
   const heute = [...d.querySelectorAll("#view .card-title button")].find(b => b.textContent === "Heute");
   ok(!!heute, "Heute-Knopf erscheint bei nicht-aktuellem Monat");

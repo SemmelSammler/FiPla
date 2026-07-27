@@ -51,21 +51,22 @@
     /* ================= Aktueller Monat: Saldo als Hero + geordnete Gruppen ================= */
     var cc = Logic.monthCockpit(state, dashMk);
     var mdCur = state.months[dashMk] || {};
-    var saldoNeu = cc.prognoseGesamt;
+    // Ein Monat zeigt IMMER seinen eigenen Saldo: mit Kontostand die Alle-Konten-
+    // Prognose, ohne Kontostand die Monats-Prognose aus Posten + Planung. Nie „–“.
+    var hatKonten = cc.prognoseGesamt != null;
+    var saldoNeu = hatKonten ? cc.prognoseGesamt : cc.prognoseSaldo;
     state.ui.dashCalcOpen = state.ui.dashCalcOpen || false;
 
     function m(v, opts) { return el("span", { class: v > 0 ? "pos" : v < 0 ? "neg" : "muted" }, U.eur(v, opts)); }
 
     // Hero: Saldo steht allein, ruhig, groß — das ist die eine Zahl, die zählt
     var hero = el("div", { class: "dash-hero" },
-      el("div", { class: "eyebrow" }, "Saldo Monatsende · alle Konten"),
-      saldoNeu != null
-        ? el("div", { class: "dash-hero-num " + (saldoNeu >= 0 ? "pos" : "neg") }, U.eur(saldoNeu))
-        : el("div", { class: "dash-hero-num muted" }, "–"),
+      el("div", { class: "eyebrow" }, hatKonten ? "Saldo Monatsende · alle Konten" : "Saldo Monatsende · Prognose"),
+      el("div", { class: "dash-hero-num " + (saldoNeu >= 0 ? "pos" : "neg") }, U.eur(saldoNeu)),
       el("div", { class: "small muted" },
-        saldoNeu != null
-          ? (mdCur.giro != null ? "Girokonto " + U.eur(mdCur.giro) + " · 2. Konto " + U.eur(mdCur.konto2 || 0) + " · Kreditkarte " + U.eur(mdCur.kkSaldo || 0) + " · + alles unten" : "")
-          : "Girokonto im Monat eintragen, dann rechnet die Prognose los."));
+        hatKonten
+          ? "Girokonto " + U.eur(mdCur.giro) + " · 2. Konto " + U.eur(mdCur.konto2 || 0) + " · Kreditkarte " + U.eur(mdCur.kkSaldo || 0) + " · + alles unten"
+          : "reine Prognose aus Posten + Planung · Girokonto im Monat eintragen, dann rechnen die Konten mit."));
 
     // Zwei Gruppen: was noch dazukommt / was noch abgeht — mit dem neuen, eindeutigen Vokabular
     function flowRow(label, sub, v) {
@@ -315,10 +316,9 @@
           td(el("div", { style: "display:flex;align-items:center;gap:4px" },
             el("button", { class: "btn sm ghost", style: "font-family:var(--mono)", onclick: function () { UI.go("monat", { month: mk }); } }, U.monthLabel(mk, true)),
             isFuture ? el("span", { class: "pill", title: "Zukunft: reine Prognose aus erwarteten Posten + Planung" }, "Prognose") : null)),
-          // Saldo = dieselbe verankerte Fortschreibung wie die Verlaufskurve: Monate mit
-          // eingetragenem Kontostand zeigen ihre Alle-Konten-Prognose, alle folgenden
-          // rollen den Anker mit ihrem Monats-Saldo weiter (vals aus dem Chart oben).
-          td(UI.money(vals[mi]), "r num"),
+          // Jeder Monat zeigt seinen EIGENEN Saldo: Alle-Konten-Prognose, wenn ein
+          // Kontostand eingetragen ist, sonst die Monats-Prognose (Spaltensumme).
+          td(UI.money(c.prognoseGesamt != null ? c.prognoseGesamt : c.prognoseSaldo), "r num"),
           td(UI.money(einn), "r num"),
           td(UI.money(c.variableSum), "r num"),
           td(UI.money(fix), "r num"),
