@@ -242,7 +242,12 @@
     // (gestrichelt, dünner) getrennt, statt einer einzigen ununterscheidbaren Linie.
     var running = 0;
     var vals = months.map(function (mk) {
-      running += cockpits[mk].prognoseSaldo;
+      var cm = cockpits[mk];
+      // Anker an der Realität: hat der Monat einen eingetragenen Kontostand, springt die
+      // Kurve auf dessen Alle-Konten-Prognose (deckt sich mit den gelben Punkten);
+      // dazwischen wird wie bisher Monats-Saldo auf Monats-Saldo aufsummiert.
+      if (cm.prognoseGiro != null) running = cm.prognoseGesamt;
+      else running += cm.prognoseSaldo;
       return Math.round(running * 100) / 100;
     });
     var bisherWerte = vals.map(function (v, i) { return Logic.cmpMonth(months[i], cur) <= 0 ? v : null; });
@@ -310,7 +315,8 @@
           td(el("div", { style: "display:flex;align-items:center;gap:4px" },
             el("button", { class: "btn sm ghost", style: "font-family:var(--mono)", onclick: function () { UI.go("monat", { month: mk }); } }, U.monthLabel(mk, true)),
             isFuture ? el("span", { class: "pill", title: "Zukunft: reine Prognose aus erwarteten Posten + Planung" }, "Prognose") : null)),
-          td(UI.money(c.prognoseSaldo), "r num"),
+          // Alle-Konten-Prognose, sobald ein Kontostand eingetragen ist (sonst = Spaltensumme)
+          td(UI.money(c.prognoseGesamt), "r num"),
           td(UI.money(einn), "r num"),
           td(UI.money(c.variableSum), "r num"),
           td(UI.money(fix), "r num"),

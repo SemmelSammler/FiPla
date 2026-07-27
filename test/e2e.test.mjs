@@ -1354,6 +1354,10 @@ console.log("\n== AD) Design-Nachbesserung Runde 2: Sonderposten-Tabelle bei hal
   ok(ccN.prognoseGesamt !== ccN.prognoseSaldo, "Testaufbau: Alle-Konten-Saldo unterscheidet sich von der Spaltensumme");
   const heroTxt = d.querySelector("#view .dash-hero-num").textContent;
   ok(heroTxt === w.U.eur(ccN.prognoseGesamt), "Hero zeigt die Alle-Konten-Prognose (" + w.U.eur(ccN.prognoseGesamt) + "), nicht die Spaltensumme");
+  // Monatsübersicht-Tabelle unten: gleiche Wahrheit — Alle-Konten-Prognose statt Spaltensumme
+  const rowAF = [...d.querySelectorAll("#view tr")].find(r => r.textContent.includes(w.U.monthLabel(next, true)));
+  ok(!!rowAF, "Monatsübersicht-Tabelle hat eine Zeile für den Folgemonat");
+  ok(rowAF.textContent.includes(w.U.eur(ccN.prognoseGesamt)), "Tabellen-Saldo zeigt die Alle-Konten-Prognose");
   // Heute-Knopf springt zurück
   const heute = [...d.querySelectorAll("#view .card-title button")].find(b => b.textContent === "Heute");
   ok(!!heute, "Heute-Knopf erscheint bei nicht-aktuellem Monat");
