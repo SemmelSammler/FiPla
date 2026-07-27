@@ -1327,5 +1327,40 @@ console.log("\n== AD) Design-Nachbesserung Runde 2: Sonderposten-Tabelle bei hal
   ok(fae.errs.length === 0, "keine JS-Fehler in Abschnitt AE");
 }
 
+
+// --- Abschnitt AF: Dashboard-Übersichtskarte mit Monatswähler + korrektem Alle-Konten-Saldo ---
+{
+  const faf = boot();
+  const w = faf.win, d = faf.doc;
+  const cur = w.U.currentMonth();
+  const next = w.Logic.nextMonth(cur);
+  // Folgemonat: Kontostände + Planung eintragen (wie Bonnis August-Fall)
+  const mdN = w.Store.monthData(next);
+  mdN.giro = 2782.55; mdN.konto2 = 2.31; mdN.kkSaldo = -260.23;
+  mdN.planned.push({ id: "af1", beschreibung: "Rücklage", typ: "ruecklage", betrag: -1650, erledigt: false, txId: null });
+  w.Store.commit({ recompute: true });
+  w.UI.go("dashboard");
+  ok(d.querySelector("#view .card-title").textContent.startsWith("Aktueller Monat"), "Karte zeigt standardmäßig den aktuellen Monat");
+  const sel = d.querySelector("#view .card-title select");
+  ok(!!sel, "Monatswähler sitzt im Kopf der Übersichts-Karte");
+  // Folgemonat auswählen
+  sel.value = next; sel.dispatchEvent(new w.Event("change", { bubbles: true }));
+  const title2 = d.querySelector("#view .card-title").textContent;
+  ok(title2.startsWith("Monat · "), "Titel wechselt zu \u201EMonat \u00B7 \u2026\u201C für nicht-aktuelle Monate");
+  ok(title2.includes(w.U.monthLabel(next).trim()), "… und nennt den gewählten Monat");
+  // Hero muss die Alle-Konten-Prognose zeigen (nicht die Spaltensumme), weil Kontostand eingetragen ist
+  const ccN = w.Logic.monthCockpit(w.Store.get(), next);
+  ok(ccN.prognoseGiro != null, "Testaufbau: Kontostand im Folgemonat vorhanden");
+  ok(ccN.prognoseGesamt !== ccN.prognoseSaldo, "Testaufbau: Alle-Konten-Saldo unterscheidet sich von der Spaltensumme");
+  const heroTxt = d.querySelector("#view .dash-hero-num").textContent;
+  ok(heroTxt === w.U.eur(ccN.prognoseGesamt), "Hero zeigt die Alle-Konten-Prognose (" + w.U.eur(ccN.prognoseGesamt) + "), nicht die Spaltensumme");
+  // Heute-Knopf springt zurück
+  const heute = [...d.querySelectorAll("#view .card-title button")].find(b => b.textContent === "Heute");
+  ok(!!heute, "Heute-Knopf erscheint bei nicht-aktuellem Monat");
+  heute.click();
+  ok(d.querySelector("#view .card-title").textContent.startsWith("Aktueller Monat"), "Heute springt zur aktuellen Ansicht zurück");
+  ok(faf.errs.length === 0, "keine JS-Fehler in Abschnitt AF");
+}
+
 console.log("\n" + pass + " bestanden, " + fail + " fehlgeschlagen");
 process.exit(fail ? 1 : 0);

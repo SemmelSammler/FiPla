@@ -37,6 +37,9 @@
     var months = allMonths.filter(function (mk) { return !state.ui.hiddenMonths[mk]; });
     var hiddenCount = allMonths.length - months.length;
     var cur = U.currentMonth();
+    // Die Übersichts-Karte oben kann einen beliebigen Monat zeigen (Wähler im Kopf);
+    // Verlaufs-Charts unten bleiben bewusst am echten aktuellen Monat verankert.
+    var dashMk = state.ui.dashMonth || cur;
     var cockpits = {};
     months.forEach(function (mk) { cockpits[mk] = Logic.monthCockpit(state, mk); });
 
@@ -46,8 +49,8 @@
     if (window.APP_MODE === "mobile" && window.BudgetPanel) host.appendChild(window.BudgetPanel(state));
 
     /* ================= Aktueller Monat: Saldo als Hero + geordnete Gruppen ================= */
-    var cc = Logic.monthCockpit(state, cur);
-    var mdCur = state.months[cur] || {};
+    var cc = Logic.monthCockpit(state, dashMk);
+    var mdCur = state.months[dashMk] || {};
     var saldoNeu = cc.prognoseGesamt;
     state.ui.dashCalcOpen = state.ui.dashCalcOpen || false;
 
@@ -85,14 +88,14 @@
         var inp = UI.numInput({ value: null, allowEmpty: true, onchange: function () { } });
         inp.placeholder = "z. B. 400";
         var addBtn = el("button", {
-          class: "btn sm", "aria-label": "Rücklage eintragen", title: "Rücklage in die Planung von " + U.monthLabel(cur) + " eintragen",
+          class: "btn sm", "aria-label": "Rücklage eintragen", title: "Rücklage in die Planung von " + U.monthLabel(dashMk) + " eintragen",
           onclick: function () {
             var v = U.parseInputNumber(inp.value);
             if (isNaN(v) || v === 0) { U.toast("Bitte einen Betrag eingeben.", "warn"); return; }
             if (v > 0) v = -v; // Rücklagen automatisch negativ (Batch 2 führt das global ein, hier schon vorweggenommen)
-            Store.monthData(cur).planned.push({ id: U.uid("plan"), beschreibung: "Rücklage (aus Dashboard)", typ: "ruecklage", betrag: v, erledigt: false, txId: null });
+            Store.monthData(dashMk).planned.push({ id: U.uid("plan"), beschreibung: "Rücklage (aus Dashboard)", typ: "ruecklage", betrag: v, erledigt: false, txId: null });
             Store.commit();
-            U.toast(U.eur(v) + " Rücklage für " + U.monthLabel(cur) + " eingetragen — im Monat editierbar.", "ok");
+            U.toast(U.eur(v) + " Rücklage für " + U.monthLabel(dashMk) + " eingetragen — im Monat editierbar.", "ok");
             UI.render();
           }
         }, "＋");
@@ -147,10 +150,20 @@
 
     var fiA = effectiveFi(state);
     var fi = Logic.runFI(fiA);
+    // Monatswähler für die Übersichts-Karte; „Heute“ springt zurück zum aktuellen Monat
+    var dashMonthSel = UI.monthSelect({
+      value: dashMk, center: cur, back: 24, forward: 24,
+      onChange: function (v) { if (v) { state.ui.dashMonth = v === cur ? null : v; Store.commit(); UI.render(); } }
+    });
+    dashMonthSel.style.maxWidth = "150px";
+    dashMonthSel.style.flex = "0 0 auto";
     var curCard = el("section", { class: "card" },
-      el("h2", { class: "card-title" }, "Aktueller Monat · " + U.monthLabel(cur),
+      el("h2", { class: "card-title" }, (dashMk === cur ? "Aktueller Monat · " : "Monat · ") + U.monthLabel(dashMk),
+        el("span", { class: "spacer", style: "flex:1" }),
+        dashMonthSel,
+        dashMk !== cur ? el("button", { class: "btn sm ghost", onclick: function () { state.ui.dashMonth = null; Store.commit(); UI.render(); } }, "Heute") : null,
         el("span", { style: "flex:1" }),
-        el("button", { class: "btn primary sm", onclick: function () { UI.go("monat", { month: cur }); } }, "Zum Monat →")),
+        el("button", { class: "btn primary sm", onclick: function () { UI.go("monat", { month: dashMk }); } }, "Zum Monat →")),
       hero, flow, secRow, calcHost);
     var fiCard = el("section", { class: "card" },
       el("h2", { class: "card-title" }, "FI-Planung ", el("span", { class: "hint" }, "4 %-Regel")),
