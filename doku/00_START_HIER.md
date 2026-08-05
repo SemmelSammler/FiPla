@@ -1,36 +1,44 @@
-# Übergabepaket FiPla — bitte zuerst lesen
+# FiPla — bitte zuerst lesen
 
-Stand: **19. Juli 2026** · Commit `ddf942d` · Alle Tests grün (116 + 367 + 39 + 8)
+Projektordner: **`~/Documents/FiPla`** · Repository: `github.com/SemmelSammler/FiPla` (privat)
+Letzter Stand: **5. August 2026** · Alle Tests grün (116 + 367 + 39 + 8 = 530)
 
-## Was ist in diesem Paket?
+## Was liegt in `doku/`?
 
-| Datei / Ordner | Inhalt |
+| Datei | Inhalt |
 |---|---|
 | `00_START_HIER.md` | Dieses Dokument |
 | `01_UEBERGABE.md` | **Das Hauptdokument** — Projekt, Architektur, rote Linien, Fallstricke, offene Punkte |
-| `02_SPEC_ORIGINAL.md` | Die ursprüngliche Spezifikation der macOS-App (historisch, alle Meilensteine erledigt) |
-| `03_ERSTER_PROMPT.md` | Fertiger Text zum Kopieren als erste Nachricht im neuen Chat |
-| `code/` | Vollständiger Quellcode-Schnappschuss (ohne generierte Ordner) |
+| `02_SPEC_ORIGINAL.md` | Ursprüngliche Spezifikation der macOS-App (historisch, alle Meilensteine erledigt) |
+| `03_ERSTER_PROMPT.md` | Fertiger Text zum Kopieren als erste Nachricht in einer neuen Sitzung |
+| `04_STAND_2026-08-05.md` | Design-Audit von `styles.css` — der fachliche Ausgangspunkt für die nächste Aufgabe |
+| `05_UMZUG_2026-08-05.md` | Umzug nach `~/Documents/FiPla`, Konfigurationsänderungen, aktuelle offene Entscheidung |
 
 ## In 3 Schritten loslegen
 
-1. **`01_UEBERGABE.md` lesen** — dort steht alles Wesentliche.
-2. **Code entpacken**: Der Ordner `code/` ist der komplette Projektstand. Er entspricht
-   exakt dem privaten GitHub-Repository `github.com/SemmelSammler/FiPla` (Commit `ddf942d`).
-   Wenn das Repo erreichbar ist, ist `git clone` der bessere Weg — dann ist auch die
-   Historie dabei.
-3. **`03_ERSTER_PROMPT.md`** in den neuen Chat kopieren.
+1. **`01_UEBERGABE.md` lesen** — dort steht alles Wesentliche über Architektur und Arbeitsweise.
+2. **`05_UMZUG_2026-08-05.md` lesen** — Ordnerstruktur und was gerade offen ist.
+   Bei Design-Themen zusätzlich `04_STAND_2026-08-05.md`.
+3. **Umgebung prüfen**: `node build.js`, dann die drei JS-Testsuiten. Erwartet: 116 + 367 + 39
+   Prüfungen ohne Fehler.
 
-## ⚠️ Wichtiger Datenschutz-Hinweis
+Der Quellcode ist **nicht** mehr als ZIP-Paket unterwegs — dieser Ordner *ist* das Repo, mit
+vollständiger Historie. Frühere Fassungen dieses Dokuments erwähnten einen Unterordner `code/`;
+den gibt es nicht mehr.
 
-Die Datei `code/js/seed.js` enthält **Beispieldaten, die aus einer echten Excel-Tabelle
-abgeleitet wurden**. Darin stehen echte Spuren: Arbeitgebername, Gläubiger, eine
-Vertragskontonummer, echte Beträge.
+## ⚠️ Datenschutz — zwei getrennte Punkte
 
-- Das Paket und jedes daraus entstehende Repository müssen **privat** bleiben.
-- Vor einer Veröffentlichung (öffentliches Repo, Code-Beispiel im Netz, App-Store)
-  muss `seed.js` durch rein erfundene Daten ersetzt werden.
+**1. `js/seed.js` enthält echte Spuren.** Die Beispieldaten sind aus einer echten
+Excel-Tabelle abgeleitet: Arbeitgebername, Gläubiger, eine Vertragskontonummer, echte Beträge.
 
-Die **laufenden** Finanzdaten des Nutzers sind **nicht** in diesem Paket. Sie liegen
-ausschließlich lokal auf seinem Mac (siehe `01_UEBERGABE.md`, Abschnitt „Wo liegen die
-Daten"). Kein Backup, kein Export und keine `state.json` ist hier enthalten.
+- Das Repository muss **privat** bleiben.
+- Vor einer Veröffentlichung (öffentliches Repo, Code-Beispiel im Netz, App Store) muss
+  `seed.js` durch rein erfundene Daten ersetzt werden.
+
+**2. `daten/` enthält echte Finanzdaten** — ein Kontodaten-Backup und einen Zustand vor einer
+Datenmigration. Der Ordner steht in `.gitignore` und ist deshalb **nicht** Teil des
+Repositorys. Diesen `.gitignore`-Eintrag nie entfernen und nichts daraus in versionierte
+Dateien kopieren.
+
+Die **laufenden** Daten der App liegen woanders, nämlich in iCloud Drive bzw. im
+localStorage des jeweiligen Builds — siehe `01_UEBERGABE.md`, Abschnitt „Wo liegen die Daten?".

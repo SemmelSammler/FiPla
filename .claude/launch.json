@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dist-server",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["/Users/semmelsammler/Documents/FiPla/tools/serve.js"],
+      "port": 8123
+    }
+  ]
+}

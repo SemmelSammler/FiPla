@@ -84,7 +84,7 @@ sofort baut. Neu bauen falls nötig:
 
 ## 4. Bauen, Testen, Starten
 
-Alle Befehle im Ordner `finanzplanung-quellcode/`:
+Alle Befehle im Projektordner `~/Documents/FiPla/`:
 
 ```bash
 node build.js              # erzeugt alle drei Builds in dist/
@@ -238,13 +238,15 @@ Stand wird committet und nach GitHub gepusht.
 ## 10. Umgebung und Werkzeuge
 
 - macOS 26.5.2 (Apple Silicon), Node 22.14, Rust 1.97.1, Tauri 2.11.
-- Projektordner: `~/Documents/Finanzen/finanzplanung-quellcode`
-- Im Überordner `~/Documents/Finanzen/` liegen **echte Backups und Zustands-Sicherungen**
-  des Nutzers — dieser Ordner ist bewusst **kein** Git-Repository. Nur der Unterordner
-  `finanzplanung-quellcode` ist versioniert.
-- `~/Documents/Finanzen/tools/gh` — GitHub-Kommandozeile als Einzeldatei (kein Homebrew
-  auf diesem Mac). Anmeldung ist eingerichtet, `git push` läuft ohne Nachfrage.
+- **Projektordner: `~/Documents/FiPla`** — gleichzeitig die Wurzel des Git-Repositorys.
+  Eine Sitzung startet hier, dann liegt alles Nötige darunter. (Umzug am 05.08.2026 aus
+  `~/Documents/Finanzen/finanzplanung-quellcode`; Details in `05_UMZUG_2026-08-05.md`.)
+- `daten/` — **echte Finanzdaten des Nutzers** (Backup und Zustand vor der
+  Vormerkungs-Bereinigung). Steht in `.gitignore` und darf dort nie herausgenommen werden.
+- `tools/gh` — GitHub-Kommandozeile als Einzeldatei (kein Homebrew auf diesem Mac).
+  Anmeldung ist eingerichtet, `git push` läuft ohne Nachfrage. Nicht versioniert (37 MB).
   Achtung: `gh auth login` verarbeitet keine per Pipe zugeführten Eingaben — falls eine
   Neuanmeldung nötig wird, muss der Nutzer sie im eigenen Terminal durchführen.
-- `~/Documents/Finanzen/tools/serve.js` — Mini-Webserver, um `dist/` im Browser zu prüfen
+- `tools/serve.js` — Mini-Webserver, um `dist/` im Browser zu prüfen
   (`node tools/serve.js`, dann `http://localhost:8123/finanzplanung.html`).
+- `.claude/launch.json` — Konfiguration für das Browser-Panel, zeigt auf `tools/serve.js`.

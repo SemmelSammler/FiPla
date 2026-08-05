@@ -14,3 +14,14 @@ src-tauri/target/
 # lokale Versand-/Arbeitsdateien
 Archiv.zip
 *.zip
+
+# ECHTE Finanzdaten des Nutzers — dürfen niemals ins Repo.
+# Enthalten Kontostände, Empfänger und Buchungen.
+daten/
+
+# gh-Kommandozeile als 37-MB-Einzeldatei — Werkzeug, kein Quellcode.
+# tools/serve.js bleibt dagegen versioniert, das gehört zum Arbeitsablauf.
+tools/gh
+
+# sitzungsbezogene Berechtigungen (Claude Code)
+.claude/settings.local.json
