@@ -1,4 +1,5 @@
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -61,9 +62,12 @@ fn now_secs() -> u64 {
 fn write_atomic_steps(dir: &PathBuf, file: &PathBuf, json: &str, crash_before_rename: bool) -> Result<(), String> {
   fs::create_dir_all(dir).map_err(|e| e.to_string())?;
   let tmp = dir.join("state.json.tmp");
-  fs::write(&tmp, json.as_bytes()).map_err(|e| e.to_string())?;
-  let f = fs::File::open(&tmp).map_err(|e| e.to_string())?;
+  // Schreiben und fsync über dasselbe Handle: Windows verlangt für
+  // sync_all (FlushFileBuffers) Schreibrechte, ein File::open reicht dort nicht.
+  let mut f = fs::File::create(&tmp).map_err(|e| e.to_string())?;
+  f.write_all(json.as_bytes()).map_err(|e| e.to_string())?;
   f.sync_all().map_err(|e| e.to_string())?;
+  drop(f);
   if crash_before_rename {
     return Err("simulierter Absturz vor dem Umbenennen".into());
   }
