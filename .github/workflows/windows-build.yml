@@ -9,6 +9,20 @@ on:
     branches: [claude/adoring-babbage-ofozq5]
 
 jobs:
+  # Gegenprobe: die Rust-Tests (inkl. geändertem Speichern) auch auf macOS
+  mac-tests:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: mkdir -p dist/native && echo '<html></html>' > dist/native/index.html
+      - name: Rust-Tests (macOS)
+        working-directory: src-tauri
+        run: cargo test
+
   build:
     runs-on: windows-latest
     steps:
