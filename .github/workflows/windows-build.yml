@@ -1,0 +1,51 @@
+# Baut die Windows-App (Installer .exe + .msi) auf einem Windows-Runner.
+# Start: GitHub → Actions → "Windows-Build" → "Run workflow".
+# Ergebnis: unter dem Lauf als Artefakt "Finanzplanung-Windows" herunterladen.
+name: Windows-Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      # jsdom steht nicht in package.json, die Tests brauchen es trotzdem
+      - run: npm install --no-save jsdom
+
+      - name: JS-Tests
+        run: |
+          node build.js
+          node test/logic.test.js
+          node test/e2e.test.mjs
+          node test/native.test.mjs
+
+      - name: Rust-Tests
+        working-directory: src-tauri
+        run: cargo test
+
+      - name: App bauen
+        run: npx tauri build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Finanzplanung-Windows
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: error
