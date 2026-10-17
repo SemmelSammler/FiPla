@@ -1,10 +1,12 @@
 # Baut die Windows-App (Installer .exe + .msi) auf einem Windows-Runner.
-# Start: GitHub → Actions → "Windows-Build" → "Run workflow".
+# Start: automatisch bei Push auf den Windows-Branch, sonst GitHub → Actions → "Windows-Build" → "Run workflow".
 # Ergebnis: unter dem Lauf als Artefakt "Finanzplanung-Windows" herunterladen.
 name: Windows-Build
 
 on:
   workflow_dispatch:
+  push:
+    branches: [claude/adoring-babbage-ofozq5]
 
 jobs:
   build:
