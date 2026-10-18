@@ -94,7 +94,7 @@
           wrap.appendChild(chk); wrap.appendChild(el("span", { class: "small" }, "Dem System (hell/dunkel) folgen"));
           return wrap;
         })(), "aus = immer dunkel, unabhängig von macOS"),
-        UI.field("Sicherheit", (function () {
+        NativeGlue.unlockSupported() ? UI.field("Sicherheit", (function () {
           var wrap = el("label", { style: "display:flex;align-items:center;gap:8px;padding:7px 0" });
           var chk = el("input", { type: "checkbox", checked: prefs.touchIdEnabled !== false });
           chk.addEventListener("change", function () {
@@ -103,7 +103,7 @@
           });
           wrap.appendChild(chk); wrap.appendChild(el("span", { class: "small" }, "Touch-ID-Sperre beim Start"));
           return wrap;
-        })(), "bei Finanzdaten empfohlen · Änderung wirkt beim nächsten Start")) : null));
+        })(), "bei Finanzdaten empfohlen · Änderung wirkt beim nächsten Start") : null) : null));
 
     var undoList = Store.getUndoStack();
     if (undoList.length) {

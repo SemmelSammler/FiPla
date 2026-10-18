@@ -1,4 +1,5 @@
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -61,9 +62,12 @@ fn now_secs() -> u64 {
 fn write_atomic_steps(dir: &PathBuf, file: &PathBuf, json: &str, crash_before_rename: bool) -> Result<(), String> {
   fs::create_dir_all(dir).map_err(|e| e.to_string())?;
   let tmp = dir.join("state.json.tmp");
-  fs::write(&tmp, json.as_bytes()).map_err(|e| e.to_string())?;
-  let f = fs::File::open(&tmp).map_err(|e| e.to_string())?;
+  // Schreiben und fsync über dasselbe Handle: Windows verlangt für
+  // sync_all (FlushFileBuffers) Schreibrechte, ein File::open reicht dort nicht.
+  let mut f = fs::File::create(&tmp).map_err(|e| e.to_string())?;
+  f.write_all(json.as_bytes()).map_err(|e| e.to_string())?;
   f.sync_all().map_err(|e| e.to_string())?;
+  drop(f);
   if crash_before_rename {
     return Err("simulierter Absturz vor dem Umbenennen".into());
   }
@@ -125,6 +129,7 @@ fn resolve_take_theirs_at(dir: &PathBuf, json: &str, ts: u64) -> Result<(String,
 }
 
 /// Touch-ID-Helfer im Entwicklungs-Checkout
+#[cfg(target_os = "macos")]
 fn dev_helper_path() -> PathBuf {
   PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("bin/touchid-helper")
 }
@@ -214,6 +219,7 @@ fn read_file_bytes(path: String) -> Result<Vec<u8>, String> {
 
 /// Touch-ID/Passwort-Abfrage über den mitgelieferten Swift-Helfer.
 /// true = entsperrt, false = abgebrochen/fehlgeschlagen, Err = nicht verfügbar.
+#[cfg(target_os = "macos")]
 #[tauri::command]
 async fn authenticate(app: tauri::AppHandle) -> Result<bool, String> {
   let mut helper = dev_helper_path();
@@ -231,6 +237,13 @@ async fn authenticate(app: tauri::AppHandle) -> Result<bool, String> {
     Some(1) => Ok(false),
     _ => Err("Touch ID nicht verfügbar".into()),
   }
+}
+
+/// Ohne Touch ID (Windows/Linux): Frontend fragt gar nicht erst, Fehler als Rückfallebene.
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+async fn authenticate() -> Result<bool, String> {
+  Err("Touch ID gibt es nur unter macOS".into())
 }
 
 /// „Sichern unter“-Dialog + Datei schreiben (Backup- und CSV-Export).
@@ -307,10 +320,14 @@ fn build_menu(app: &tauri::App) -> tauri::Result<()> {
   };
   let app_sub = SubmenuBuilder::new(h, "Finanzplanung")
     .item(&PredefinedMenuItem::about(h, Some("Über Finanzplanung"), Some(about))?)
-    .separator()
+    .separator();
+  // Ausblenden gibt es nur unter macOS
+  #[cfg(target_os = "macos")]
+  let app_sub = app_sub
     .item(&PredefinedMenuItem::hide(h, Some("Finanzplanung ausblenden"))?)
     .item(&PredefinedMenuItem::hide_others(h, Some("Andere ausblenden"))?)
-    .separator()
+    .separator();
+  let app_sub = app_sub
     .item(&PredefinedMenuItem::quit(h, Some("Finanzplanung beenden"))?)
     .build()?;
 
@@ -398,6 +415,10 @@ pub fn run() {
     .build(tauri::generate_context!())
     .expect("error while building tauri application");
 
+  #[cfg(not(target_os = "macos"))]
+  app.run(|_, _| {});
+
+  #[cfg(target_os = "macos")]
   app.run(|app_handle, event| {
     // macOS: Datei aufs Dock-Icon gezogen (oder „Öffnen mit“) → puffern,
     // Fenster nach vorn holen und das Frontend anstupsen.
@@ -543,6 +564,7 @@ mod tests {
     assert_eq!(find_with_prefix(&dir, "state.json.konflikt-diese-sitzung-").len(), 1);
   }
 
+  #[cfg(target_os = "macos")]
   #[test]
   fn touchid_helfer_liegt_bereit_und_ist_ausfuehrbar() {
     // `authenticate` selbst öffnet eine macOS-Systemabfrage und ist daher

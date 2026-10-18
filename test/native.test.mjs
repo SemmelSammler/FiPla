@@ -84,6 +84,8 @@ console.log("\n== 3) Touch-ID-Präferenz (requiresUnlock / mirrorTouchIdPref) ==
   win.NativeGlue.mirrorTouchIdPref(true);
   ok(win.NativeGlue.requiresUnlock() === true, "wieder aktivieren → Sperre wieder aktiv");
   ok(win.localStorage.getItem("fipla.touchIdEnabled") === "true", "Präferenz wird in localStorage gespiegelt (für den Boot-Zeitpunkt vor dem Laden des Zustands)");
+  Object.defineProperty(win.navigator, "userAgent", { value: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edg/130.0" });
+  ok(win.NativeGlue.unlockSupported() === false && win.NativeGlue.requiresUnlock() === false, "Windows (WebView2) → keine Touch-ID-Sperre, trotz aktiver Präferenz");
 }
 
 console.log("\n== 4) unlock() — Erfolg, Ablehnung, Fehler ==");

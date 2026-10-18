@@ -22,8 +22,13 @@ var NativeGlue = (function () {
      Laden des Zustands fallen muss (der Zustand selbst liegt ja hinter der Sperre),
      wird die Präferenz zusätzlich in localStorage gespiegelt — die eigentliche
      Quelle bleibt state.ui.prefs.touchIdEnabled, gespiegelt bei jedem applyPrefs(). */
+  /* Touch ID gibt es nur auf dem Mac. Unter Windows (WebView2) entfällt die Sperre
+     samt Einstellung, statt bei jedem Start „nicht verfügbar“ zu melden. */
+  function unlockSupported() {
+    return !/Windows/i.test((typeof navigator !== "undefined" && navigator.userAgent) || "");
+  }
   function requiresUnlock() {
-    if (!active()) return false;
+    if (!active() || !unlockSupported()) return false;
     try { return localStorage.getItem("fipla.touchIdEnabled") !== "false"; }
     catch (e) { return true; }
   }
@@ -194,7 +199,7 @@ var NativeGlue = (function () {
 
   return {
     active: active, afterBoot: afterBoot, pickBackup: pickBackup,
-    requiresUnlock: requiresUnlock, unlock: unlock, handleConflict: handleConflict,
+    requiresUnlock: requiresUnlock, unlockSupported: unlockSupported, unlock: unlock, handleConflict: handleConflict,
     applyThemePref: applyThemePref, mirrorTouchIdPref: mirrorTouchIdPref,
     stateLocation: function () { return stateLocation; }
   };
