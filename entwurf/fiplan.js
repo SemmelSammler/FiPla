@@ -14,7 +14,9 @@
    9  Ein Topf bekommt nur, was bis zum Ziel fehlt (kein Geld verschwindet)
    10 KfW-Kredite mit Zinsen (Stand laut Kontoauszug, Zins, Monatsrate, Rate ab); vorher wurde
       die ganze Rate als Tilgung gerechnet
-   11 Sparen ab: Vor diesem Monat bekommen die Spartöpfe nichts, das Freie bleibt unverplant  */
+   11 Sparen ab: Vor diesem Monat läuft nur, was laufen muss (KfW-Rate, Kredit aus Anschaffungen).
+      Alle Töpfe (auch Lebensqualität, Auto, Sondertilgung) starten erst dann, das Freie bleibt unverplant
+   12 Gehaltserhöhung jeweils ab einem Monat (Standard Mai), Fixkosten steigen im Januar  */
 (function (root) {
   "use strict";
   var ORDER = { auto: ["ng", "etf", "hek"], etf: ["etf"], ng: ["ng"], hek: ["hek"], kind: ["kind"] };
@@ -49,13 +51,16 @@
 
     for (var jahr = startjahr; jahr <= endYear; jahr++) {
       var first = jahr === startjahr;
-      if (!first) { einn = Math.min(einnCap, einn * (1 + a.wachstumEinnahmen)); fix = Math.min(fixCap, fix * (1 + a.wachstumFix)); }
+      if (!first) fix = Math.min(fixCap, fix * (1 + a.wachstumFix));
+      var erhM = Number(a.erhoehungMonat) || 1, einnSum = 0, einnVor = einn;
       var months = [], sums = {}, wd = { ng: 0, etf: 0, hek: 0, kind: 0, fehl: 0 }, evDetails = [], hekEingesetzt = 0, evSum = 0;
       ALLOC.forEach(function (k) { sums[k] = 0; });
       var pfl1Sum = 0, pfl2Sum = 0, freiSum = 0, zinsSum = 0, vorSpar = 0;
 
       for (var m = first ? startMonat : 1; m <= 12; m++) {
         var ym = jahr * 12 + m - 1, vor = sparYm != null && ym < sparYm;
+        if (m === erhM && !(first && m === startMonat)) einn = Math.min(einnCap, einn * (1 + a.wachstumEinnahmen));   // Gehaltserhöhung
+        einnSum += einn;
         var k1 = kfwMonat(kfw1, a.kfw1Zins, a.kfw1Rate, ab1, ym), k2 = kfwMonat(kfw2, a.kfw2Zins, a.kfw2Rate, ab2, ym);
         kfw1 = k1.rest; kfw2 = k2.rest; zinsSum += k1.zins + k2.zins;
         var p1 = k1.pay, p2 = k2.pay;
@@ -66,9 +71,9 @@
         if (S.schuld < 0.005) S.schuld = 0;
         var pausiertStart = S.schuld > 0;
         if (!pausiertStart && !vor) al.etfMin = take(a.etfMindest);
-        al.lebensqual = take(a.lebensqualitaet);
-        al.sonder = kfw1 < -0.005 ? take(Math.min(a.kfw1Sonder, -kfw1)) : 0;
-        al.auto = take(a.autoPauschale);
+        al.lebensqual = vor ? 0 : take(a.lebensqualitaet);
+        al.sonder = !vor && kfw1 < -0.005 ? take(Math.min(a.kfw1Sonder, -kfw1)) : 0;
+        al.auto = vor ? 0 : take(a.autoPauschale);
         if (S.schuld > 0) { al.kredit = take(S.schuld); S.schuld -= al.kredit; }   // Kredit zuerst: Spartöpfe pausieren
         var pausiert = S.schuld > 0.005;
         if (vor) { al.unverplant = Math.max(0, budget); vorSpar++; }       // vor dem Sparstart: nichts sparen
@@ -117,7 +122,7 @@
       var fi = fiCap * 0.04 >= bedarf * 12;
       if (fi && fiJahr === null) fiJahr = jahr;
       years.push({
-        jahr: jahr, alter: jahr - geburtsjahr, monate: n, months: months, einnahmen: einn, fixkosten: fix,
+        jahr: jahr, alter: jahr - geburtsjahr, monate: n, months: months, einnahmen: einnSum / n, einnVor: einnVor, einnNach: einn, erhoehung: einn > einnVor + 0.005, fixkosten: fix,
         kfw1Pfl: avg(pfl1Sum), kfw2Pfl: avg(pfl2Sum), frei: avg(freiSum),
         allocEtfMin: avg(sums.etfMin), allocLebensqual: avg(sums.lebensqual), allocSonder: avg(sums.sonder), allocAuto: avg(sums.auto),
         allocKind: avg(sums.kind), allocKredit: avg(sums.kredit), allocHausEk: avg(sums.hausEk), allocNotgroschen: avg(sums.notgroschen), allocEtfRest: avg(sums.etfRest), allocUnverplant: avg(sums.unverplant), kfwZins: zinsSum, vorSpar: vorSpar,

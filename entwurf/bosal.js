@@ -25,8 +25,11 @@
     frozen: {},                        // abgeschlossene Monate: { mk: Endstand }
     demoImported: false
   };
-  // Nicht mehr aktuelle Posten (laut Nutzer): Baloise BU, Fitness, PS Plus, Nintendo Online
-  state.expected = state.expected.filter(function (i) { return ["exp-08", "exp-09", "exp-14", "exp-16"].indexOf(i.id) === -1; });
+  // Feste Posten wie in der App des Nutzers (Stand 18.10.2026). Weg: Konsumkredit, Baloise BU, Fitness,
+  // OpenAI, PS Plus, Nintendo. Spotify steht dort versehentlich mit +21,99 €, hier als Ausgabe.
+  var AKTUELL = { "exp-01": 3427.74, "exp-02": 538, "exp-03": -1003.01, "exp-04": -500, "exp-06": -72, "exp-07": -86.89, "exp-10": -24.99, "exp-12": -21.99, "exp-13": -21.7, "exp-15": -8.99, "exp-17": -2.99, "exp-18": -300 };
+  state.expected = state.expected.filter(function (i) { return AKTUELL[i.id] != null; });
+  state.expected.forEach(function (i) { i.betrag = AKTUELL[i.id]; });
   L.enrichAll(state);
   // Abgeschlossene Monate (im echten Tool: dein letzter Übrig-Wert beim Abschluss)
   L.monthRange(state.transactions.reduce(function (m, t) { return t.effMonat < m ? t.effMonat : m; }, CUR), L.prevMonth(CUR))
@@ -503,7 +506,7 @@
     document.getElementById("app").innerHTML =
       '<header class="top"><div class="brand"><span class="brand-mark" aria-hidden="true"></span>BoSal</div><div class="top-r"><button class="ur" data-act="undo"' + (hist.past.length ? ' title="Rückgängig: ' + esc(hist.past[hist.past.length - 1].label) + '"' : " disabled") + ' aria-label="Rückgängig">↶</button>' +
       '<button class="ur" data-act="redo"' + (hist.future.length ? ' title="Wiederholen: ' + esc(hist.future[hist.future.length - 1].label) + '"' : " disabled") + ' aria-label="Wiederholen">↷</button>' +
-      '<button class="ur" data-act="palOpen" aria-label="Farbpalette">🎨</button><span class="top-date">Entwurf 11</span>' + (ui.palOpen ? palettePicker() : "") + "</div></header>" +
+      '<button class="ur" data-act="palOpen" aria-label="Farbpalette">🎨</button><span class="top-date">Entwurf 14</span>' + (ui.palOpen ? palettePicker() : "") + "</div></header>" +
       '<nav class="nav" aria-label="Bereiche">' + nav + '</nav><main class="main">' + RENDER[ui.view]() + "</main>" + modal() +
       (ui.toast ? '<div class="toast" role="status">' + esc(ui.toast) + "</div>" : "");
     window.scrollTo(0, y);

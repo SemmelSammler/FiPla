@@ -136,3 +136,14 @@ Hauptgründe: höherer Lebensbedarf (1), Fixkosten aus dem Monat (6), Haus-EK ni
 - **Sparen ab** (Standard März 2027, jederzeit änderbar im Jahr-Kasten und in den Annahmen): Vorher
   bekommen ETF, Kinder-Sparen, Haus-EK und Notgroschen nichts. Lebensqualität, Auto, KfW-Rate und
   KfW-Sondertilgung laufen. Das übrige Freie steht als „Nicht verplant“ da und zählt nicht zum Vermögen.
+
+## Feste Posten, Sparstart, Gehaltserhöhung (Entwurf 14)
+
+- **Feste Posten** im Entwurf wie in der App des Nutzers (18.10.2026): Gehalt 3.427,74, Mietanteil
+  Laura 538, Miete 1.003,01, Strom 72, Internet 86,89, Handy 24,99, Spotify 21,99, Zahnzusatz 21,70,
+  Amazon 8,99, Apple 2,99, Lebensmittel 300, KfW 500. Monat und Zukunft ergeben beide 1.923,18 € frei.
+  In der echten App steht Spotify versehentlich mit **+21,99** (als Einnahme) – dort korrigieren.
+- **Sparen ab** gilt jetzt für alle Töpfe, auch Lebensqualität, Auto und Sondertilgung. Vorher laufen
+  nur KfW-Rate und ggf. ein Kredit aus Anschaffungen.
+- **Gehaltserhöhung** jeweils ab einem Monat (Annahme „Gehaltserhöhung jeweils ab“, Standard Mai).
+  Fixkosten steigen weiter im Januar.
