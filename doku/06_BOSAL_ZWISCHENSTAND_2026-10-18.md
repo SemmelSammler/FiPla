@@ -87,3 +87,20 @@ Monatsbilanz:
 - **Merkposten:** Die Diagramme (Vermögen, FI-Test) gefallen, sollen aber noch überarbeitet
   werden. Nicht ohne Rücksprache ändern.
 - Nächster Schritt: Der Nutzer entscheidet pro Prüfpunkt „so lassen“ oder „ändern“.
+
+## Korrigierte FI-Rechnung (Entwurf 8)
+
+Neue Datei `entwurf/fiplan.js` (`BoSalFI.run`), `js/logic.js` bleibt unverändert. Korrigiert:
+
+1. FI-Test misst den Lebensbedarf: Fixkosten + wählbar Lebensqualität und Auto
+2. Haus-EK zählt nicht zum FI-Kapital, optional mit Kaufjahr
+3. Lebensereignisse voll verrechnet (ETF → Notgroschen → Haus-EK → Fehlbetrag), nicht mehr ÷ 12
+4. Kinder-Sparen ist ein eigener Spartopf, Auto bleibt Ausgabe
+5. Hinweis auf fehlende Startbestände, neues Feld „Kinder-Sparen heute“
+6. Einnahmen und Fixkosten standardmäßig live aus einem Monat (abhakbar), „von Hand“ möglich
+7. Startjahr und Restmonate aus dem heutigen Datum, Alter aus dem Geburtsjahr
+8. Deckel nie unter dem Startwert
+9. Neu gefunden: Beim Erreichen eines Ziels verschwand der Überschuss (bei den Beispieldaten 4.245 €)
+
+Mit den Beispieldaten: alte Rechnung frei 2042 (mit 45), korrigiert 2052 (mit 55).
+Hauptgründe: höherer Lebensbedarf (1), Fixkosten aus dem Monat (6), Haus-EK nicht mitgezählt (2).
