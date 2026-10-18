@@ -506,7 +506,7 @@
     document.getElementById("app").innerHTML =
       '<header class="top"><div class="brand"><span class="brand-mark" aria-hidden="true"></span>BoSal</div><div class="top-r"><button class="ur" data-act="undo"' + (hist.past.length ? ' title="Rückgängig: ' + esc(hist.past[hist.past.length - 1].label) + '"' : " disabled") + ' aria-label="Rückgängig">↶</button>' +
       '<button class="ur" data-act="redo"' + (hist.future.length ? ' title="Wiederholen: ' + esc(hist.future[hist.future.length - 1].label) + '"' : " disabled") + ' aria-label="Wiederholen">↷</button>' +
-      '<button class="ur" data-act="palOpen" aria-label="Farbpalette">🎨</button><span class="top-date">Entwurf 14</span>' + (ui.palOpen ? palettePicker() : "") + "</div></header>" +
+      '<button class="ur" data-act="palOpen" aria-label="Farbpalette">🎨</button><span class="top-date">Entwurf 15</span>' + (ui.palOpen ? palettePicker() : "") + "</div></header>" +
       '<nav class="nav" aria-label="Bereiche">' + nav + '</nav><main class="main">' + RENDER[ui.view]() + "</main>" + modal() +
       (ui.toast ? '<div class="toast" role="status">' + esc(ui.toast) + "</div>" : "");
     window.scrollTo(0, y);

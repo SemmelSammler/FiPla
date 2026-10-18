@@ -91,18 +91,20 @@
       row(a.ausMonat ? "Deine Einnahmen netto" : "Einnahmen netto", y.einnahmen, (y.jahr === first ? (a.ausMonat ? "aus " + c.mLabel(monthValues(c, a).mk, true) + (monthValues(c, a).erst ? ", ohne Anteile von anderen" : "") : "von Hand eingetragen") :
         y.erhoehung ? "bis " + MONL[a.erhoehungMonat - 2 < 0 ? 11 : a.erhoehungMonat - 2] + " " + eur0(y.einnVor) + ", ab " + MONL[a.erhoehungMonat - 1] + " " + eur0(y.einnNach) + " (+" + pct(a.wachstumEinnahmen) + "). Oben steht der Schnitt" : "höchstens " + eur0(Math.max(a.einnahmenDeckel, a.einnahmen)) + " erreicht")) +
       row(a.ausMonat && monthValues(c, a).erst ? "Deine Fixkosten" : "Fixkosten", -y.fixkosten, y.jahr === first ? (a.ausMonat ? (monthValues(c, a).erst ? "dein Anteil: geteilte Kosten minus " + c.eur0(monthValues(c, a).erst) + " von anderen" : "aus dem Monat") : "von Hand eingetragen") : "+" + pct(a.wachstumFix) + " pro Jahr, höchstens " + eur0(Math.max(a.fixkostenDeckel, a.fixkosten))) +
-      row("KfW-Raten", -(y.kfw1Pfl + y.kfw2Pfl), y.kfw1Pfl + y.kfw2Pfl || y.kfw1 + y.kfw2 < -0.5 ? (y.kfwZins > 0.5 ? "Zinsen " + y.jahr + " insgesamt " + eur0(y.kfwZins) + ", der Rest tilgt" : "Rate laut Kontoauszug") : "Kredite sind abbezahlt") +
+      row("KfW-Raten", -(y.kfw1Pfl + y.kfw2Pfl), y.kfw1Pfl + y.kfw2Pfl || y.kfw1 + y.kfw2 < -0.5 ? (y.kfw2Pfl > 0.5 ? "KfW 1 " + eur0(y.kfw1Pfl) + " + KfW 2 " + eur0(y.kfw2Pfl) + ". " : "") + (y.kfwZins > 0.5 ? "Zinsen " + y.jahr + " insgesamt " + eur0(y.kfwZins) + ", der Rest tilgt" : "Rate laut Kontoauszug") : "Kredite sind abbezahlt") +
       '<li class="calc-total"><span>Frei pro Monat</span>' + money(y.frei) + "</li></ul>" +
       '<p class="muted small">Anschaffungen stecken nicht hier drin. Sie werden im jeweiligen Monat voll vom Ersparten abgezogen (Karte „Anschaffungen“ direkt unter Schritt 2).</p>');
 
     /* Schritt 2 */
-    var PL = potsFor(years).filter(function (x) { return !x.p.kredit || y[x.p.got] > 0.5; });
+    var PL = potsFor(years).filter(function (x) { return (!x.p.kredit || y[x.p.got] > 0.5) && (!x.p.vor || y.vorSpar); });
     var maxW = PL.reduce(function (m, x) { return Math.max(m, x.p.will ? x.p.will(a) : y[x.p.got]); }, 1);
     var s2 = step(2, "Wie wird das Freie verteilt?", "Von oben nach unten: jeder Topf bekommt seinen Betrag, solange noch Geld da ist",
-      (y.vorSpar ? '<p class="note">Sparen ab ' + mkLabel(a.sparAb) + ": In " + (y.vorSpar === y.monate ? "allen " : "") + y.vorSpar + " Monaten dieses Jahres bekommen die Töpfe noch nichts, auch Lebensqualität, Auto und Sondertilgung nicht. Nur die KfW-Rate läuft. Was frei ist, steht unter „Nicht verplant“ und zählt nicht zum Vermögen.</p>" : "") +
+      (y.vorSpar ? '<p class="note">Sparen ab ' + mkLabel(a.sparAb) + ": " + (y.vorSpar < y.monate ? "Die Beträge unten gelten pro Monat ab " + mkLabel(a.sparAb).split(" ")[0] + ", „Nicht verplant“ pro Monat davor. " : "") + "In " + (y.vorSpar === y.monate ? "allen " : "") + y.vorSpar + " Monaten dieses Jahres bekommen die Töpfe noch nichts, auch Lebensqualität, Auto und Sondertilgung nicht. Nur die KfW-Rate läuft. Was frei ist, steht unter „Nicht verplant“ und zählt nicht zum Vermögen.</p>" : "") +
       (y.months.some(function (m) { return m.pausiert; }) ? '<p class="note">In diesem Jahr läuft ein Kredit aus einer Anschaffung. Solange er offen ist, pausieren die Spartöpfe und ihr Geld zahlt den Kredit zurück. Die Werte sind Durchschnitte pro Monat.</p>' : "") +
       '<ol class="pots">' + PL.map(function (x) {
-        var p = x.p, got = y[p.got], will = p.will ? p.will(a) : null, full = will == null || got >= will - 0.5, note = "";
+        // Pro Monat in den Monaten, in denen der Topf läuft (vor dem Sparstart läuft nur „Nicht verplant“)
+        var p = x.p, nAktiv = p.vor ? y.vorSpar : p.kredit ? y.monate : y.monate - y.vorSpar, got = nAktiv ? y.sums[p.sk] / nAktiv : 0;
+        var will = p.will ? p.will(a) : null, full = will == null || got >= will - 0.5, note = "";
         if (p.ziel) { var st = y[p.stock]; note = (p.stock === "hausEk" && y.hekEingesetzt) ? "Haus gekauft: " + eur0(y.hekEingesetzt) + " eingesetzt" : st >= a[p.ziel] - 0.5 ? "Ziel " + eur0(a[p.ziel]) + " erreicht" : "Stand Ende " + y.jahr + ": " + eur0(st) + " von " + eur0(a[p.ziel]); }
         if (p.got === "allocSonder" && y.kfw1 >= -0.5 && !got) note = "KfW 1 ist abbezahlt";
         var w = will || got || 0;
