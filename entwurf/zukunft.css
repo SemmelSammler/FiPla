@@ -242,3 +242,10 @@ label.pal { cursor: pointer; }
 .fm-sub.fm-mine { color: var(--ink); font-weight: 800; border-top-style: solid; }
 .fm-sum { display: flex; justify-content: space-between; }
 .fm-hint { margin: 8px 0 0; }
+/* Sparen ab */
+.z-spar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border-top: 1px dashed var(--line-strong); padding-top: 10px; }
+.z-spar select, .z-spar input { background: var(--surface2); border: 1px solid var(--line-strong); border-radius: 10px; padding: 6px 8px; font: inherit; font-size: 14px; color: var(--ink); }
+.z-spar input { width: 72px; }
+.art-frei { --c: var(--muted); }
+.pot.art-frei .pot-tag, .st-tbl tr.art-frei .pot-tag { color: var(--muted); background: var(--surface2); }
+.vt td.zero.vor { font-size: 11px; color: var(--muted); font-style: italic; }

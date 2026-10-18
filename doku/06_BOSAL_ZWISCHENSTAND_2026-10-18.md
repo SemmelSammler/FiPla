@@ -125,3 +125,14 @@ Hauptgründe: höherer Lebensbedarf (1), Fixkosten aus dem Monat (6), Haus-EK ni
 - Karte „Anschaffungen“ steht direkt unter Schritt 1 und 2.
 - Behoben: Das Monats-Auswahlfeld einer Anschaffung schloss sich sofort wieder, wenn vorher ein
   anderes Feld geändert wurde (die Seite wurde neu gezeichnet, während das Auswahlfeld aufging).
+
+## Studienkredite und Sparstart (Entwurf 13)
+
+- **KfW neu aufgesetzt** nach den Kontoauszügen vom 03.10.2026 (Korrektur 10: vorher keine Zinsen):
+  KfW 1: 14.121,29 €, 7,46 %, 500 €/Monat. KfW 2: 4.800 € + 603,58 € aufgeschobene Zinsen =
+  5.403,58 €, 4,14 %, noch keine Rate. **Annahme, vom Nutzer zu prüfen:** KfW 2 ab Januar 2027 mit
+  100 €/Monat. Zinsen pro Monat = Saldo × Zins ÷ 12. Bis zum Auszugsmonat ist die Rate schon im Saldo.
+  Der alte Tilgungsplan pro Jahr (`kfw1Plan`/`kfw2Plan`) wird von der neuen Rechnung nicht mehr genutzt.
+- **Sparen ab** (Standard März 2027, jederzeit änderbar im Jahr-Kasten und in den Annahmen): Vorher
+  bekommen ETF, Kinder-Sparen, Haus-EK und Notgroschen nichts. Lebensqualität, Auto, KfW-Rate und
+  KfW-Sondertilgung laufen. Das übrige Freie steht als „Nicht verplant“ da und zählt nicht zum Vermögen.

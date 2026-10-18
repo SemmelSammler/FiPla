@@ -15,7 +15,16 @@
     if (a.ausMonat == null) a.ausMonat = true;
     if (a.hauskaufJahr === undefined) a.hauskaufJahr = null;
     if (a.fehlZins == null) a.fehlZins = 0.06;
+    // Studienkredite neu aufgesetzt nach den KfW-Kontoauszügen vom 03.10.2026
+    if (!a.kfwV2) {
+      a.kfwStand = "2026-10";
+      a.kfw1Rest = 14121.29; a.kfw1Zins = 0.0746; a.kfw1Rate = 500; a.kfw1Ab = null;
+      a.kfw2Rest = 5403.58; a.kfw2Zins = 0.0414; a.kfw2Rate = 100; a.kfw2Ab = "2027-01";   // Rate und Start KfW 2: Annahme, bitte prüfen
+      a.kfwV2 = true;
+    }
+    if (a.sparAb === undefined) a.sparAb = "2027-03";
   }
+  function mkLabel(v) { if (!v) return null; var p = String(v).split("-"); return MONL[+p[1] - 1] + " " + p[0]; }
   // Einnahmen/Fixkosten live aus dem Monat (Korrektur 6)
   function monthValues(c, a) {
     var mk = zu.src || c.state.active;
@@ -49,13 +58,14 @@
     { name: "Kinder-Sparen", art: "gespart", got: "allocKind", sk: "kind", wk: "kind", will: function (a) { return a.kindSparrate; }, stock: "kind" },
     { name: "Haus-Eigenkapital", art: "gespart", got: "allocHausEk", sk: "hausEk", wk: "hek", will: function (a) { return a.hausEkRate; }, stock: "hausEk", ziel: "hausEkZiel" },
     { name: "Notgroschen", art: "gespart", got: "allocNotgroschen", sk: "notgroschen", wk: "ng", will: function (a) { return a.notgroschenRate; }, stock: "notgroschen", ziel: "notgroschenZiel" },
-    { name: "ETF: der ganze Rest", art: "gespart", got: "allocEtfRest", sk: "etfRest", wk: "etf", will: null, stock: "etf" }
+    { name: "ETF: der ganze Rest", art: "gespart", got: "allocEtfRest", sk: "etfRest", wk: "etf", will: null, stock: "etf" },
+    { name: "Nicht verplant (vor dem Sparstart)", art: "frei", got: "allocUnverplant", sk: "unverplant", will: null, vor: true }
   ];
 
   // Töpfe mit Nummern; die Kredit-Zeile erscheint nur, wenn es je einen Fehlbetrag gibt
   function potsFor(years) {
-    var used = years.some(function (y) { return y.sums.kredit > 0.5; }), n = 0;
-    return POTS.filter(function (p) { return !p.kredit || used; }).map(function (p) { return { p: p, nr: p.kredit ? "!" : String(++n) }; });
+    var used = years.some(function (y) { return y.sums.kredit > 0.5; }), vor = years.some(function (y) { return y.sums.unverplant > 0.5; }), n = 0;
+    return POTS.filter(function (p) { return (!p.kredit || used) && (!p.vor || vor); }).map(function (p) { return { p: p, nr: p.kredit ? "!" : p.vor ? "–" : String(++n) }; });
   }
 
   function render(c) {
@@ -72,14 +82,14 @@
       '<input type="range" min="' + first + '" max="' + last + '" value="' + zu.year + '" data-act="zYear" aria-label="Jahr wählen">' +
       '<div class="z-year-btns">' + [first, first + 1, first + 2, r.fiJahr, r.fiJahr ? Math.min(last, r.fiJahr + 10) : null].filter(function (v, i, arr) { return v && arr.indexOf(v) === i; }).map(function (v) {
         return '<button class="chip' + (v === zu.year ? " on" : "") + '" data-act="zSetYear" data-y="' + v + '">' + v + (v === r.fiJahr ? " · frei" : "") + "</button>";
-      }).join("") + "</div></div>";
+      }).join("") + "</div>" + sparAbCtl(c, c.state.fi) + "</div>";
 
     /* Schritt 1 */
     var s1 = step(1, "Was ist pro Monat frei?", "Im Jahr " + y.jahr + (y.monate < 12 ? " (noch " + y.monate + " Monate ab heute)" : ""),
       '<ul class="calc">' +
       row(a.ausMonat ? "Deine Einnahmen netto" : "Einnahmen netto", y.einnahmen, y.jahr === first ? (a.ausMonat ? "aus " + c.mLabel(monthValues(c, a).mk, true) + (monthValues(c, a).erst ? ", ohne Anteile von anderen" : "") : "von Hand eingetragen") : "+" + pct(a.wachstumEinnahmen) + " pro Jahr, höchstens " + eur0(Math.max(a.einnahmenDeckel, a.einnahmen))) +
       row(a.ausMonat && monthValues(c, a).erst ? "Deine Fixkosten" : "Fixkosten", -y.fixkosten, y.jahr === first ? (a.ausMonat ? (monthValues(c, a).erst ? "dein Anteil: geteilte Kosten minus " + c.eur0(monthValues(c, a).erst) + " von anderen" : "aus dem Monat") : "von Hand eingetragen") : "+" + pct(a.wachstumFix) + " pro Jahr, höchstens " + eur0(Math.max(a.fixkostenDeckel, a.fixkosten))) +
-      row("KfW-Pflichtraten", -(y.kfw1Pfl + y.kfw2Pfl), y.kfw1Pfl + y.kfw2Pfl ? "laut Tilgungsplan " + y.jahr : "Kredite sind abbezahlt") +
+      row("KfW-Raten", -(y.kfw1Pfl + y.kfw2Pfl), y.kfw1Pfl + y.kfw2Pfl || y.kfw1 + y.kfw2 < -0.5 ? (y.kfwZins > 0.5 ? "Zinsen " + y.jahr + " insgesamt " + eur0(y.kfwZins) + ", der Rest tilgt" : "Rate laut Kontoauszug") : "Kredite sind abbezahlt") +
       '<li class="calc-total"><span>Frei pro Monat</span>' + money(y.frei) + "</li></ul>" +
       '<p class="muted small">Anschaffungen stecken nicht hier drin. Sie werden im jeweiligen Monat voll vom Ersparten abgezogen (Karte „Anschaffungen“ direkt unter Schritt 2).</p>');
 
@@ -87,6 +97,7 @@
     var PL = potsFor(years).filter(function (x) { return !x.p.kredit || y[x.p.got] > 0.5; });
     var maxW = PL.reduce(function (m, x) { return Math.max(m, x.p.will ? x.p.will(a) : y[x.p.got]); }, 1);
     var s2 = step(2, "Wie wird das Freie verteilt?", "Von oben nach unten: jeder Topf bekommt seinen Betrag, solange noch Geld da ist",
+      (y.vorSpar ? '<p class="note">Sparen ab ' + mkLabel(a.sparAb) + ": In " + (y.vorSpar === y.monate ? "allen " : "") + y.vorSpar + " Monaten dieses Jahres bekommen die Spartöpfe noch nichts. Was frei ist, steht unter „Nicht verplant“ und zählt nicht zum Vermögen. Lebensqualität, Auto und KfW laufen schon.</p>" : "") +
       (y.months.some(function (m) { return m.pausiert; }) ? '<p class="note">In diesem Jahr läuft ein Kredit aus einer Anschaffung. Solange er offen ist, pausieren die Spartöpfe und ihr Geld zahlt den Kredit zurück. Die Werte sind Durchschnitte pro Monat.</p>' : "") +
       '<ol class="pots">' + PL.map(function (x) {
         var p = x.p, got = y[p.got], will = p.will ? p.will(a) : null, full = will == null || got >= will - 0.5, note = "";
@@ -129,6 +140,15 @@
     function pct(v) { return c.fmt.format(v * 100).replace(/,00$/, "") + " %"; }
   }
 
+  // „Sparen ab“: Monat und Jahr, jederzeit änderbar
+  function sparAbCtl(c, src) {
+    var v = src.sparAb, p = v ? String(v).split("-") : null;
+    return '<div class="z-spar"><span class="small"><b>Sparen ab</b></span>' +
+      '<select data-act="zMk" data-k="sparAb" data-part="m" aria-label="Monat">' + (p ? "" : '<option value="" selected>sofort</option>') + MONL.map(function (m, i) { return '<option value="' + (i + 1) + '"' + (p && +p[1] === i + 1 ? " selected" : "") + ">" + m + "</option>"; }).join("") + "</select>" +
+      '<input class="in-num" inputmode="numeric" data-act="zMk" data-k="sparAb" data-part="y" value="' + (p ? p[0] : "") + '" placeholder="Jahr" aria-label="Jahr">' +
+      (v ? c.btn("sofort", "zSparSofort", "", "btn-sm btn-ghost") : "") + "</div>";
+  }
+
   function step(n, title, sub, body) {
     return '<section class="card z-step"><div class="z-step-h"><span class="z-n">' + n + '</span><div><h2>' + title + '</h2><p class="muted small">' + sub + "</p></div></div>" + body + "</section>";
   }
@@ -140,7 +160,7 @@
     function wdSum(k) { return upto.reduce(function (s, x) { return s + x.wd[k]; }, 0); }
     function bar(v, max) { return '<div class="st-bar"><span style="width:' + Math.max(0, Math.min(100, v / (max || 1) * 100)).toFixed(1) + '%"></span></div>'; }
     var kfwStart = Math.abs(a.kfw1Rest || 0) + Math.abs(a.kfw2Rest || 0), kfwNow = Math.max(0, -(y.kfw1 + y.kfw2)) || 0;
-    var verb = { gespart: "eingezahlt", ausgegeben: "ausgegeben", getilgt: "zusätzlich getilgt" };
+    var verb = { gespart: "eingezahlt", ausgegeben: "ausgegeben", getilgt: "zusätzlich getilgt", frei: "nicht verplant" };
     var rows = potsFor(years).map(function (x) {
       var p = x.p, goal = "";
       if (p.got === "allocSonder") goal = "<span>Restschuld KfW " + eur0(kfwNow) + " von " + eur0(kfwStart) + "</span>" + bar(kfwStart - kfwNow, kfwStart);
@@ -198,10 +218,10 @@
           if (cc.off) return '<td class="off">–</td>';
           var v = cc.alloc[p.sk]; sum += v;
           var monthly = mode === "jahr" ? cc.y[p.got] : v, full = !p.will || monthly >= p.will(a) - 0.5, al = v > 0.5 ? Math.round(12 + v / max * 48) : 0;
-          var paused = cc.pausiert && p.art === "gespart" && v < 0.5;
-          return '<td class="' + (v < 0.5 ? (paused ? "zero paused" : "zero") : full ? "full" : "part") + (cc.sel ? " sel" : "") + '" style="--al:' + al + '%"' + (paused ? ' title="pausiert wegen Kredit"' : "") + ">" + (v < 0.5 ? (paused ? "Pause" : "–") : eur0(v).replace(" €", "")) + "</td>";
+          var paused = cc.pausiert && p.art === "gespart" && v < 0.5, vorS = p.art === "gespart" && v < 0.5 && (cc.d ? cc.d.vorSpar : cc.y && cc.y.vorSpar === cc.y.monate);
+          return '<td class="' + (v < 0.5 ? (paused ? "zero paused" : vorS ? "zero vor" : "zero") : full ? "full" : "part") + (cc.sel ? " sel" : "") + '" style="--al:' + al + '%"' + (paused ? ' title="pausiert wegen Kredit"' : "") + ">" + (v < 0.5 ? (paused ? "Pause" : vorS ? "noch nicht" : "–") : eur0(v).replace(" €", "")) + "</td>";
         }).join("");
-        return '<tr class="art-' + p.art + (p.kredit ? " vt-kredit" : "") + '"><th class="vt-name"><span class="pot-n">' + x.nr + "</span><span><b>" + p.name + '</b><em class="muted">' + (p.kredit ? "zahlt den Kredit zurück" : p.will ? "will " + eur0(p.will(a)) + "/Monat" : "bekommt den Rest") + "</em></span></th>" + tds + '<td class="vt-sum num">' + eur0(sum) + "</td></tr>";
+        return '<tr class="art-' + p.art + (p.kredit ? " vt-kredit" : "") + '"><th class="vt-name"><span class="pot-n">' + x.nr + "</span><span><b>" + p.name + '</b><em class="muted">' + (p.kredit ? "zahlt den Kredit zurück" : p.vor ? "Freies vor dem Sparstart" : p.will ? "will " + eur0(p.will(a)) + "/Monat" : "bekommt den Rest") + "</em></span></th>" + tds + '<td class="vt-sum num">' + eur0(sum) + "</td></tr>";
       }).join("");
       note = "Was jeder Topf " + per + " bekommt. Entnahmen für Anschaffungen siehst du unter „Kontostände“.";
     } else {
@@ -259,10 +279,12 @@
   function annahmen(c, a, r) {
     var src = c.state.fi, eur = c.eur;
     var groups = [
-      ["Start", [["geburtsjahr", "Geburtsjahr", "j"], ["endalter", "Rechnen bis Alter", "j"]]],
+      ["Start", [["geburtsjahr", "Geburtsjahr", "j"], ["endalter", "Rechnen bis Alter", "j"], ["sparAb", "Sparen ab (leer = sofort)", "mk"]]],
       ["Startwerte im ersten Jahr: Einnahmen & Fixkosten", [["einnahmen", "Einnahmen netto / Monat", "€", src.ausMonat], ["wachstumEinnahmen", "Wachstum Einnahmen", "%"], ["einnahmenDeckel", "Einnahmen höchstens", "€"], ["fixkosten", "Fixkosten / Monat", "€", src.ausMonat], ["wachstumFix", "Wachstum Fixkosten", "%"], ["fixkostenDeckel", "Fixkosten höchstens", "€"]]],
       ["Töpfe (so viel will jeder pro Monat)", [["etfMindest", "ETF-Mindestbetrag", "€"], ["lebensqualitaet", "Lebensqualität", "€"], ["kfw1Sonder", "KfW-Sondertilgung", "€"], ["autoPauschale", "Auto", "€"], ["kindSparrate", "Kinder-Sparen", "€"], ["hausEkRate", "Haus-EK", "€"], ["hausEkZiel", "Haus-EK-Ziel", "€"], ["hauskaufJahr", "Hauskauf im Jahr (leer = nie)", "j0"], ["notgroschenRate", "Notgroschen", "€"], ["notgroschenZiel", "Notgroschen-Ziel", "€"]]],
-      ["Was du heute schon hast · Zinsen", [["etfStart", "ETF heute", "€"], ["notgroschenStart", "Notgroschen heute", "€"], ["hausEkStart", "Haus-EK heute", "€"], ["kindStart", "Kinder-Sparen heute", "€"], ["kfw1Rest", "KfW 1 Restschuld", "€"], ["kfw2Rest", "KfW 2 Restschuld", "€"], ["etfRendite", "ETF-Rendite p. a.", "%"], ["notgroschenZins", "Notgroschen-Zins p. a.", "%"], ["fehlZins", "Kreditzins, falls Geld fehlt", "%"]]]
+      ["Was du heute schon hast · Zinsen", [["etfStart", "ETF heute", "€"], ["notgroschenStart", "Notgroschen heute", "€"], ["hausEkStart", "Haus-EK heute", "€"], ["kindStart", "Kinder-Sparen heute", "€"], ["etfRendite", "ETF-Rendite p. a.", "%"], ["notgroschenZins", "Notgroschen-Zins p. a.", "%"], ["fehlZins", "Kreditzins, falls Geld fehlt", "%"]]],
+      ["Studienkredite (laut KfW-Kontoauszug)", [["kfwStand", "Stand vom (Monat, Rate schon abgebucht)", "mk"], ["kfw1Rest", "KfW 1: Restschuld", "€"], ["kfw1Zins", "KfW 1: Zins p. a.", "%"], ["kfw1Rate", "KfW 1: Monatsrate", "€"], ["kfw1Ab", "KfW 1: Rate ab (leer = läuft)", "mk"],
+        ["kfw2Rest", "KfW 2: Restschuld inkl. aufgeschobener Zinsen", "€"], ["kfw2Zins", "KfW 2: Zins p. a.", "%"], ["kfw2Rate", "KfW 2: Monatsrate", "€"], ["kfw2Ab", "KfW 2: Rate ab (leer = läuft)", "mk"]]]
     ];
     var html = '<div class="card"><div class="card-head"><h2>Deine Annahmen</h2>' + c.btn(zu.edit ? "Fertig" : "Bearbeiten", "zEdit", "", zu.edit ? "btn-primary" : "") + '</div>' +
       '<p class="muted small">Startjahr ' + r.startjahr + " und " + r.monateJahr1 + " Restmonate kommen automatisch aus dem heutigen Datum. Dein Alter rechnet sich aus dem Geburtsjahr.</p>" +
@@ -270,8 +292,9 @@
       '<div class="ann-grid">' + groups.map(function (g) {
         return '<div class="ann-g"><h3>' + g[0] + '</h3><dl class="kv">' + g[1].map(function (f) {
           var v = f[3] ? a[f[0]] : src[f[0]], lock = f[3];
-          var shown = v == null || v === "" ? "–" : f[2] === "%" ? c.fmt.format(v * 100) + " %" : f[2][0] === "j" ? String(v) : eur(v);
-          var inp = '<input class="in-num" inputmode="decimal" data-act="zFi" data-k="' + f[0] + '" data-t="' + f[2] + '" value="' + (v == null ? "" : f[2] === "%" ? c.fmt.format(v * 100) : f[2][0] === "j" ? v : c.fmt.format(v)) + '">';
+          var mkTxt = function (x) { var q = String(x).split("-"); return q[1] + "." + q[0]; };
+          var shown = f[2] === "mk" ? (v ? mkLabel(v) : f[0] === "sparAb" ? "sofort" : f[0] === "kfwStand" ? "–" : "läuft schon") : v == null || v === "" ? "–" : f[2] === "%" ? c.fmt.format(v * 100) + " %" : f[2][0] === "j" ? String(v) : eur(v);
+          var inp = '<input class="in-num" inputmode="decimal" data-act="zFi" data-k="' + f[0] + '" data-t="' + f[2] + '"' + (f[2] === "mk" ? ' placeholder="MM.JJJJ"' : "") + ' value="' + (v == null || v === "" ? "" : f[2] === "mk" ? mkTxt(v) : f[2] === "%" ? c.fmt.format(v * 100) : f[2][0] === "j" ? v : c.fmt.format(v)) + '">';
           return "<div><dt>" + f[1] + (lock ? ' <em class="muted small">aus dem Monat</em>' : "") + "</dt><dd>" + (zu.edit && !lock ? inp : '<span class="num">' + shown + "</span>") + "</dd></div>";
         }).join("") + "</dl></div>";
       }).join("") + "</div>" + fromMonth(c, a) + "</div>";
@@ -383,8 +406,11 @@
       ["Deckel nie unter dem Startwert", "Lag ein Startwert über dem Deckel, fiel er im 2. Jahr plötzlich auf den Deckel.", "Ein Deckel begrenzt nur das Wachstum. Liegt der Startwert darüber, bleibt er stehen.",
         t([["Fixkosten im 2. Jahr bei Startwert " + eur0(a.fixkosten), eur0(Math.min(src.fixkostenDeckel, a.fixkosten * (1 + src.wachstumFix))), eur0(r.years[1] ? r.years[1].fixkosten : 0)]])],
       ["Kein Geld verschwindet beim Erreichen eines Ziels", "Im Jahr, in dem Haus-EK oder Notgroschen das Ziel erreichten, bekamen sie trotzdem den vollen Betrag. Der Überschuss war weg.", "Ein Topf bekommt nur, was bis zum Ziel fehlt. Der Rest fließt in die nächsten Töpfe.",
-        t([["Verschwundenes Geld über alle Jahre", eur0(lostOld), "0 €"]])]
+        t([["Verschwundenes Geld über alle Jahre", eur0(lostOld), "0 €"]])],
+      ["KfW-Kredite mit Zinsen", "Die ganze Rate zählte als Tilgung, Zinsen gab es nicht. Die Raten kamen aus einem Plan pro Jahr.", "Stand, Zins und Rate kommen aus dem Kontoauszug. Jeden Monat kommen Zinsen dazu (Saldo × Zins ÷ 12, wie bei der KfW), die Rate geht ab. Bei KfW 2 wachsen die Zinsen weiter, bis die Rate startet.",
+        t([["KfW-Zinsen insgesamt", "0 €", eur0(r.years.reduce(function (s2, y) { return s2 + y.kfwZins; }, 0))], ["KfW 1 abbezahlt", payoff(old, "kfw1"), payoff(r, "kfw1")], ["KfW 2 abbezahlt", payoff(old, "kfw2"), payoff(r, "kfw2")]])]
     ];
+    function payoff(rr, k) { var y0 = rr.years.find(function (y) { return y[k] > -0.5; }); return y0 ? String(y0.jahr) : "nicht bis " + rr.years[rr.years.length - 1].jahr; }
     return '<div class="card"><h2>Was gegenüber der alten Rechnung korrigiert ist</h2>' +
       '<div class="kz-sum"><div><span class="muted small">alte Rechnung</span><b>' + (old.fiJahr || "–") + "</b><span class=\"muted small\">mit " + old.fiAlter + '</span></div><span class="kz-arrow">→</span><div><span class="muted small">korrigiert</span><b>' + (r.fiJahr || "nie") + '</b><span class="muted small">' + (r.fiAlter ? "mit " + r.fiAlter : "bis " + r.years[r.years.length - 1].jahr) + "</span></div></div>" +
       '<div class="pp-list">' + items.map(function (x, i) {
@@ -434,6 +460,7 @@
     if (act === "zVl") { zu.vlStart = +d.s; return true; }
     if (act === "zVlInhalt") { zu.vlInhalt = d.m; return true; }
     if (act === "zAus") { c.mark("Quelle für Startwerte geändert"); if (d.v === "0" && a.ausMonat) { var mv = monthValues(c, a); a.einnahmen = mv.ein; a.fixkosten = mv.fix; } a.ausMonat = d.v === "1"; return true; }
+    if (act === "zSparSofort") { c.mark("Sparstart: sofort"); a.sparAb = null; return true; }
     if (act === "zTag") { var it = c.state.expected.find(function (x) { return x.id === d.id; }); c.mark("Posten umsortiert"); it[d.k] = !it[d.k]; return true; }
     if (act === "zEvAdd") { c.mark("Anschaffung hinzugefügt"); (a.events = a.events || []).push({ jahr: new Date().getFullYear() + 1, monat: 1, beschreibung: "Neue Anschaffung", betrag: -1000 }); return true; }
     if (act === "zEvDel") { c.mark("Anschaffung gelöscht"); a.events.splice(+d.i, 1); return true; }
@@ -450,8 +477,19 @@
       if (f === "beschreibung" || f === "quelle") e[f] = el.value; else { var n2 = c.parseNum(el.value); if (!isNaN(n2)) e[f] = f === "jahr" || f === "monat" ? Math.round(n2) : n2; }
       return true;
     }
+    if (act === "zMk") {
+      var cur = a[el.dataset.k] ? String(a[el.dataset.k]).split("-") : [String(new Date().getFullYear()), String(new Date().getMonth() + 1)];
+      var val = parseInt(el.value, 10); if (isNaN(val)) return true;
+      if (el.dataset.part === "m") cur[1] = String(val); else { if (val < 2000 || val > 2100) return true; cur[0] = String(val); }
+      c.mark("Sparstart geändert"); a[el.dataset.k] = cur[0] + "-" + String(+cur[1]).padStart(2, "0"); return true;
+    }
     if (act === "zFi") {
       var t = el.dataset.t, raw = el.value.trim();
+      if (t === "mk") {
+        if (raw === "") { c.mark("Annahme geändert"); a[el.dataset.k] = el.dataset.k === "kfwStand" ? a.kfwStand : null; return true; }
+        var mm = raw.match(/^(\d{1,2})\D+(\d{4})$/); if (!mm || +mm[1] < 1 || +mm[1] > 12) return true;
+        c.mark("Annahme geändert"); a[el.dataset.k] = mm[2] + "-" + String(+mm[1]).padStart(2, "0"); return true;
+      }
       if (t === "j0" && raw === "") { c.mark("Annahme geändert"); a[el.dataset.k] = null; return true; }
       var n = c.parseNum(raw); if (isNaN(n)) return true;
       if (t === "%") n = n / 100; if (t[0] === "j") n = Math.round(n);
