@@ -150,3 +150,23 @@ label.pal { cursor: pointer; }
 .ev-list .ev-j { width: 76px; } .ev-list .ev-t { flex: 1; min-width: 160px; } .ev-list .in-num { width: 120px; }
 .ev-m { min-width: 110px; }
 @media (max-width: 900px) { .vl-row { grid-template-columns: 1fr; } .fm-cols { grid-template-columns: 1fr; } .st-goal { min-width: 0; } .st-tbl th:nth-child(4), .st-tbl td:nth-child(4) { display: none; } }
+/* Töpfe-Tabelle */
+.vt-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.vt-wrap { overflow-x: auto; }
+.vt { width: 100%; border-collapse: separate; border-spacing: 3px; font-size: 13px; min-width: 760px; }
+.vt thead th { font-size: 12px; color: var(--muted); font-weight: 700; padding: 4px 2px; text-align: center; }
+.vt thead th em { display: block; font-style: normal; font-size: 10px; color: var(--accent); }
+.vt thead th.sel button { color: var(--accent); }
+.vt thead th.off { opacity: .4; }
+.vt-name { text-align: left; white-space: nowrap; padding-right: 10px; display: flex; align-items: center; gap: 8px; font-weight: 400; }
+.vt-name span:last-child { display: flex; flex-direction: column; }
+.vt-name em { font-style: normal; font-size: 11px; }
+.vt td { text-align: center; padding: 8px 4px; border-radius: 8px; font-family: var(--f-num); font-variant-numeric: tabular-nums; background: color-mix(in srgb, var(--c) var(--al, 0%), var(--surface2)); }
+.vt td.full { font-weight: 800; }
+.vt td.part { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 60%, transparent); }
+.vt td.zero, .vt td.off { color: var(--muted); background: transparent; }
+.vt td.sel { outline: 2px solid var(--accent); outline-offset: -1px; }
+.vt td.vt-sum, .vt th.vt-sum { background: transparent; font-weight: 800; text-align: right; padding-left: 10px; }
+.vt-lg { display: inline-block; width: 18px; height: 12px; border-radius: 4px; margin-right: -8px; background: color-mix(in srgb, var(--pos) 45%, var(--surface2)); }
+.vt-lg.part { background: var(--surface2); box-shadow: inset 0 0 0 1.5px var(--pos); }
+.vt-lg.zero { background: none; width: auto; color: var(--muted); }

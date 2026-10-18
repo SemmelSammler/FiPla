@@ -141,40 +141,52 @@
     }).join("") + "</tbody></table></div>";
   }
 
-  /* Jeder Topf als eigene Zeile über alle Jahre: Balken = bekommt pro Monat, Linie = will */
+  /* Die 7 Töpfe als lesbare Tabelle: Jahre (10 pro Seite, blätterbar) oder Monate des gewählten Jahres */
   function verlaufCard(c, a, years, fiJ) {
-    var eur0 = c.eur0;
+    var eur0 = c.eur0, esc = c.esc, mode = zu.vlMode || "jahr";
     var etfMin = function (x) { return Math.min(a.etfMindest, Math.max(0, x.frei)); };
     var defs = [
-      ["ETF-Mindestbetrag", "gespart", etfMin, function () { return a.etfMindest; }],
-      ["Lebensqualität", "ausgegeben", function (x) { return x.allocLebensqual; }, function () { return a.lebensqualitaet; }],
-      ["KfW-Sondertilgung", "getilgt", function (x) { return x.allocSonder; }, function () { return a.kfw1Sonder; }],
-      ["Auto + Kind", "ausgegeben", function (x) { return x.allocAutoKind; }, function () { return a.autoPauschale + a.kindSparrate; }],
-      ["Haus-Eigenkapital", "gespart", function (x) { return x.allocHausEk; }, function () { return a.hausEkRate; }],
-      ["Notgroschen", "gespart", function (x) { return x.allocNotgroschen; }, function () { return a.notgroschenRate; }],
+      ["ETF-Mindestbetrag", "gespart", etfMin, a.etfMindest],
+      ["Lebensqualität", "ausgegeben", function (x) { return x.allocLebensqual; }, a.lebensqualitaet],
+      ["KfW-Sondertilgung", "getilgt", function (x) { return x.allocSonder; }, a.kfw1Sonder],
+      ["Auto + Kind", "ausgegeben", function (x) { return x.allocAutoKind; }, a.autoPauschale + a.kindSparrate],
+      ["Haus-Eigenkapital", "gespart", function (x) { return x.allocHausEk; }, a.hausEkRate],
+      ["Notgroschen", "gespart", function (x) { return x.allocNotgroschen; }, a.notgroschenRate],
       ["ETF: der ganze Rest", "gespart", function (x) { return x.allocEtf - etfMin(x); }, null]
     ];
-    var max = 0; defs.forEach(function (d) { years.forEach(function (x) { max = Math.max(max, d[2](x), d[3] ? d[3]() : 0); }); });
-    function story(d) {
-      var vals = years.map(function (x) { return d[2](x); }), will = d[3] ? d[3]() : null;
-      var firstFull = will ? years.find(function (x) { return d[2](x) >= will - 0.5; }) : null, lastPos = null;
-      years.forEach(function (x) { if (d[2](x) > 0.5) lastPos = x.jahr; });
-      if (!will) { var f = years.find(function (x) { return d[2](x) > 0.5; }); return f ? "bekommt Geld ab " + f.jahr + ", " + eur0(vals[vals.length - 1]) + "/Monat am Ende" : "bekommt nie etwas"; }
-      if (lastPos === null) return "bekommt nie etwas";
-      var t = firstFull ? (firstFull.jahr === years[0].jahr ? "von Anfang an voll" : "voll ab " + firstFull.jahr) : "nie ganz voll";
-      if (lastPos < years[years.length - 1].jahr) t += ", endet nach " + lastPos;
-      return t;
+    var cols, head, cell, nav = "", note;
+    if (mode === "jahr") {
+      var start = zu.vlStart != null ? zu.vlStart : years[0].jahr, first = years[0].jahr, last = years[years.length - 1].jahr;
+      start = Math.max(first, Math.min(start, last - 9));
+      cols = years.filter(function (x) { return x.jahr >= start && x.jahr < start + 10; });
+      head = cols.map(function (x) { return '<th class="' + (x.jahr === zu.year ? "sel" : "") + (x.jahr === fiJ ? " fi" : "") + '"><button class="linkrow" data-act="zSetYear" data-y="' + x.jahr + '">' + x.jahr + (x.jahr === fiJ ? "<em>frei</em>" : "") + "</button></th>"; }).join("");
+      cell = function (d, x) { return { v: d[2](x) * x.monate, full: d[3] == null || d[2](x) >= d[3] - 0.5, sel: x.jahr === zu.year }; };
+      nav = '<div class="vt-nav">' + c.btn("‹ früher", "zVl", ' data-s="' + (start - 10) + '"', "btn-sm" + (start <= first ? " btn-ghost" : "")) + '<span class="muted small">' + start + "–" + Math.min(last, start + 9) + " von " + first + "–" + last + "</span>" + c.btn("später ›", "zVl", ' data-s="' + (start + 10) + '"', "btn-sm" + (start + 9 >= last ? " btn-ghost" : "")) + "</div>";
+      note = "Summe pro Jahr. Das erste Jahr hat nur " + years[0].monate + " Monate. Spalte antippen wählt das Jahr.";
+    } else {
+      var y = years.find(function (x) { return x.jahr === zu.year; }), firstM = 12 - y.monate;
+      var MON = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+      cols = MON.map(function (m, i) { return { m: m, on: i >= firstM }; });
+      head = cols.map(function (x) { return "<th" + (x.on ? "" : ' class="off"') + ">" + x.m + "</th>"; }).join("");
+      cell = function (d, x) { return x.on ? { v: d[2](y), full: d[3] == null || d[2](y) >= d[3] - 0.5 } : null; };
+      nav = '<div class="vt-nav">' + c.btn("‹ " + (zu.year - 1), "zSetYear", ' data-y="' + (zu.year - 1) + '"', "btn-sm") + "<b>" + zu.year + "</b>" + c.btn((zu.year + 1) + " ›", "zSetYear", ' data-y="' + (zu.year + 1) + '"', "btn-sm") + "</div>";
+      note = "Betrag pro Monat in " + zu.year + ". Die heutige Rechnung kennt nur einen Wert pro Jahr, deshalb sind alle Monate eines Jahres gleich." + (firstM ? " Im Startjahr zählen nur die letzten " + y.monate + " Monate." : "");
     }
-    return '<div class="card z-verlauf"><div class="card-head"><h2>So entwickeln sich die 7 Töpfe</h2><span class="muted small">Balken = bekommt pro Monat · Strich = will · Balken antippen wählt das Jahr</span></div>' +
-      '<div class="vl">' + defs.map(function (d, i) {
-        var will = d[3] ? d[3]() : null;
-        return '<div class="vl-row art-' + d[1] + '"><div class="vl-l"><span class="pot-n">' + (i + 1) + '</span><div><b>' + d[0] + '</b><span class="muted small">' + story(d) + '</span></div></div><div class="vl-bars">' +
-          (will ? '<span class="vl-will" style="bottom:' + (will / max * 100).toFixed(1) + '%"></span>' : "") +
-          years.map(function (x) {
-            var v = d[2](x);
-            return '<button class="vl-b' + (x.jahr === zu.year ? " sel" : "") + (x.jahr === fiJ ? " fi" : "") + '" data-act="zSetYear" data-y="' + x.jahr + '" title="' + x.jahr + ": " + eur0(v) + ' pro Monat"><span style="height:' + (v / max * 100).toFixed(1) + '%"></span></button>';
-          }).join("") + "</div></div>";
-      }).join("") + '<div class="vl-row vl-axis"><div></div><div class="vl-years"><span>' + years[0].jahr + "</span><span>frei " + fiJ + "</span><span>" + years[years.length - 1].jahr + "</span></div></div></div></div>";
+    var max = 1; defs.forEach(function (d) { cols.forEach(function (x) { var k = cell(d, x); if (k) max = Math.max(max, k.v); }); });
+    var body = defs.map(function (d, i) {
+      var sum = 0;
+      var tds = cols.map(function (x) {
+        var k = cell(d, x); if (!k) return '<td class="off">–</td>';
+        sum += k.v;
+        var alpha = k.v > 0.5 ? Math.round(12 + k.v / max * 48) : 0;
+        return '<td class="' + (k.v < 0.5 ? "zero" : k.full ? "full" : "part") + (k.sel ? " sel" : "") + '" style="--al:' + alpha + '%">' + (k.v < 0.5 ? "–" : eur0(k.v).replace(" €", "")) + "</td>";
+      }).join("");
+      return '<tr class="art-' + d[1] + '"><th class="vt-name"><span class="pot-n">' + (i + 1) + "</span><span><b>" + d[0] + '</b><em class="muted">' + (d[3] != null ? "will " + eur0(d[3]) + "/Monat" : "bekommt den Rest") + "</em></span></th>" + tds + '<td class="vt-sum num">' + eur0(sum) + "</td></tr>";
+    }).join("");
+    return '<div class="card z-verlauf"><div class="card-head"><h2>So entwickeln sich die 7 Töpfe</h2><div class="seg seg-sm">' +
+      '<button class="seg-b' + (mode === "jahr" ? " on" : "") + '" data-act="zVlMode" data-m="jahr">Jahre</button><button class="seg-b' + (mode === "monat" ? " on" : "") + '" data-act="zVlMode" data-m="monat">Monate</button></div></div>' +
+      nav + '<div class="vt-wrap"><table class="vt"><thead><tr><th></th>' + head + '<th class="vt-sum">Summe</th></tr></thead><tbody>' + body + "</tbody></table></div>" +
+      '<div class="legend-row small muted"><span class="vt-lg full"></span>bekommt alles, was er will <span class="vt-lg part"></span>bekommt nur einen Teil <span class="vt-lg zero">–</span>bekommt nichts</div><p class="muted small">' + esc(note) + "</p></div>";
   }
 
   /* Startwerte aus einem Monat übernehmen */
@@ -311,8 +323,10 @@
 
   /* ---------- Ereignisse ---------- */
   function handle(c, a, d, el) {
-    if (a === "zSetYear") { zu.year = +d.y; return true; }
+    if (a === "zSetYear") { zu.year = +d.y; if (zu.vlMode !== "monat") zu.vlStart = null; return true; }
     if (a === "zEdit") { zu.edit = !zu.edit; return true; }
+    if (a === "zVlMode") { zu.vlMode = d.m; return true; }
+    if (a === "zVl") { zu.vlStart = +d.s; return true; }
     if (a === "zTake") { c.mark("Startwerte aus Monat übernommen"); c.state.fi.einnahmen = Math.round(+d.e * 100) / 100; c.state.fi.fixkosten = Math.round(+d.f * 100) / 100; zu.fmOpen = false; c.toast("Startwerte übernommen."); return true; }
     if (a === "zEvAdd") { c.mark("Ereignis hinzugefügt"); (c.state.fi.events = c.state.fi.events || []).push({ jahr: c.state.fi.startjahr + 1, beschreibung: "Neues Ereignis", betrag: 0 }); return true; }
     if (a === "zEvDel") { c.mark("Ereignis gelöscht"); c.state.fi.events.splice(+d.i, 1); return true; }
