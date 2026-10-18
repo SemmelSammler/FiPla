@@ -13,6 +13,7 @@ Letzter Stand: **5. August 2026** · Alle Tests grün (116 + 367 + 39 + 8 = 530)
 | `03_ERSTER_PROMPT.md` | Fertiger Text zum Kopieren als erste Nachricht in einer neuen Sitzung |
 | `04_STAND_2026-08-05.md` | Design-Audit von `styles.css` — der fachliche Ausgangspunkt für die nächste Aufgabe |
 | `05_UMZUG_2026-08-05.md` | Umzug nach `~/Documents/FiPla`, Konfigurationsänderungen, aktuelle offene Entscheidung |
+| `06_BOSAL_ZWISCHENSTAND_2026-10-18.md` | **Neuester Stand:** Umbau zu BoSal, Kernlogik „Übrig im Monat“, Entwurf in `entwurf/` |
 
 ## In 3 Schritten loslegen
 
