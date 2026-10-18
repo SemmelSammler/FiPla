@@ -75,3 +75,15 @@ Monatsbilanz:
 - **Datenübernahme:** Die bisherigen „geplanten Einnahmen/Ausgaben“ mit Person werden zu
   „mir geschuldet“ bzw. „ich schulde“. Rücklagen werden zu Rücklagen. Der Rest wird erst beim
   Umbau sauber zugeordnet, eine automatische Zuordnung ist nicht eindeutig.
+
+## Zukunft (Stand Entwurf 6)
+
+- Die heutige FI-Rechnung (`Logic.runFI`) ist im Entwurf Schritt für Schritt erklärt, mit
+  Jahreswahl, Übersicht „Alle Töpfe Ende Jahr“, Verlauf der 7 Töpfe, eintragbaren
+  Lebensereignissen und Startwerten aus einem Monat.
+- 7 Prüfpunkte sind live gerechnet. Punkt 3 (große Ereignisse verschwinden) ist ein echter
+  Rechenfehler. Zusätzlich aufgefallen: Liegt der Startwert über dem Deckel, fallen
+  Fixkosten bzw. Einnahmen ab dem 2. Jahr auf den Deckel.
+- **Merkposten:** Die Diagramme (Vermögen, FI-Test) gefallen, sollen aber noch überarbeitet
+  werden. Nicht ohne Rücksprache ändern.
+- Nächster Schritt: Der Nutzer entscheidet pro Prüfpunkt „so lassen“ oder „ändern“.

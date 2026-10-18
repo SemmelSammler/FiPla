@@ -2,7 +2,7 @@
    Aufbau als Geschichte in 4 Schritten + Annahmen + 7 Prüfpunkte mit Live-Beispielen. */
 (function () {
   "use strict";
-  var zu = { year: null, edit: false, open: {} };
+  var zu = { year: null, edit: false, open: {}, src: null, pick: null };
 
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function yearWhen(r, f) { var y = r.years.find(f); return y ? y.jahr : null; }
@@ -69,22 +69,28 @@
     var s3 = step(3, "Wie wächst dein Vermögen?", "Bestände am Ende jedes Jahres",
       stackChart(years, zu.year, r.fiJahr) +
       '<div class="z-legend small"><span><i style="background:var(--c-etf)"></i>ETF (+' + fmtP(a.etfRendite) + ' p. a.)</span><span><i style="background:var(--c-hek)"></i>Haus-EK (0 %)</span><span><i style="background:var(--c-ng)"></i>Notgroschen (' + fmtP(a.notgroschenZins) + ')</span><span><i style="background:var(--c-kfw)"></i>KfW-Schulden</span></div>' +
-      '<ul class="calc">' + calcRow("Notgroschen", y.notgroschen) + calcRow("Haus-Eigenkapital", y.hausEk) + calcRow("ETF", y.etf) + calcRow("KfW-Schulden", y.kfw1 + y.kfw2) +
+      '<ul class="calc">' + calcRow("Erspartes (Notgroschen + Haus-EK + ETF)", y.notgroschen + y.hausEk + y.etf) + calcRow("KfW-Schulden", y.kfw1 + y.kfw2) +
       '<li class="calc-total"><span>Vermögen Ende ' + y.jahr + "</span>" + money(y.vermoegen) + "</li></ul>");
+    var stand = standCard(c, a, years, y);
+    var verlauf = verlaufCard(c, a, years, r.fiJahr);
 
     /* ---------- Schritt 4: FI-Test ---------- */
     var cap = fiCap(y), ertrag = cap * 0.04, bedarf = y.fixkosten * 12, ok = ertrag >= bedarf;
-    var s4 = step(4, "Wann bist du frei?", "Frei bist du, sobald 4 % deines Ersparten die Fixkosten eines Jahres decken",
+    var pct = Math.min(1, ertrag / bedarf);
+    var s4 = step(4, "Wann bist du frei?", "Die Idee in einem Satz: Dein Erspartes bezahlt deine Fixkosten, ohne dass es weniger wird",
+      '<div class="z-explain"><p><b>Die Faustregel:</b> Von deinem Ersparten darfst du jedes Jahr <b>4 %</b> nehmen. Weil das Geld weiter Zinsen bringt, wird es dadurch auf lange Sicht nicht weniger.</p>' +
+      '<p><b>Frei bist du</b>, sobald diese 4 % reichen, um deine <b>Fixkosten fürs ganze Jahr</b> zu bezahlen. Dann musst du für die Fixkosten nicht mehr arbeiten.</p></div>' +
+      '<div class="z-prog"><div class="z-prog-top"><span><b>' + y.jahr + ":</b> dein Erspartes deckt " + Math.round(pct * 100) + ' % deiner Fixkosten</span><b class="' + (ok ? "pos" : "") + '">' + (ok ? "frei ✓" : "noch nicht frei") + '</b></div><div class="z-prog-bar"><span style="width:' + (pct * 100).toFixed(1) + '%"></span></div></div>' +
+      '<ul class="calc">' + calcRow("Dein Erspartes Ende " + y.jahr, cap, "Notgroschen + Haus-EK + ETF") + calcRow("4 % davon: so viel darfst du pro Jahr nehmen", ertrag, "= " + eur0(ertrag / 12) + " pro Monat") + calcRow("Deine Fixkosten fürs ganze Jahr", -bedarf, eur0(y.fixkosten) + " × 12 Monate") +
+      '<li class="calc-total ' + (ok ? "ok" : "") + '"><span>' + (ok ? "Reicht, du bist frei" : "Reicht noch nicht") + "</span>" + (ok ? money(ertrag - bedarf) : '<span class="num neg">es fehlen ' + eur0(bedarf - ertrag) + " pro Jahr</span>") + "</li></ul>" +
+      '<p class="muted small">Damit es reicht, brauchst du ' + eur0(bedarf / 0.04) + " Erspartes. Das Diagramm zeigt beides über die Jahre: Wo die durchgezogene Linie über die gestrichelte steigt, bist du frei.</p>" +
       fiChart(years, zu.year, r.fiJahr) +
-      '<div class="z-legend small"><span><i style="background:var(--accent)"></i>4 % deines Ersparten pro Jahr</span><span><i style="background:var(--neg)"></i>Fixkosten × 12</span></div>' +
-      '<ul class="calc">' + calcRow("Erspartes (Notgroschen + Haus-EK + ETF)", cap) + calcRow("davon 4 % pro Jahr", ertrag) + calcRow("Fixkosten × 12", -bedarf) +
-      '<li class="calc-total ' + (ok ? "ok" : "") + '"><span>' + y.jahr + (ok ? ": frei ✓" : ": noch nicht frei") + "</span>" + (ok ? money(ertrag - bedarf) : '<span class="num neg">es fehlen ' + eur0(bedarf - ertrag) + "</span>") + "</li></ul>" +
-      '<p class="muted small">Gebraucht werden ' + eur0(bedarf / 0.04) + " Erspartes (Fixkosten × 12 ÷ 4 %).</p>");
+      '<div class="z-legend small"><span><i style="background:var(--accent)"></i>so viel darfst du pro Jahr nehmen (4 %)</span><span><i style="background:var(--neg)"></i>so viel kosten deine Fixkosten pro Jahr</span></div>');
 
     /* ---------- Annahmen ---------- */
     var groups = [
       ["Start", [["startjahr", "Startjahr", "j"], ["startalter", "Alter im Startjahr", "j"], ["monateJahr1", "Monate im 1. Jahr", "j"], ["endalter", "Rechnen bis Alter", "j"]]],
-      ["Einnahmen & Fixkosten", [["einnahmen", "Einnahmen netto / Monat", "€"], ["wachstumEinnahmen", "Wachstum Einnahmen", "%"], ["einnahmenDeckel", "Einnahmen höchstens", "€"], ["fixkosten", "Fixkosten / Monat", "€"], ["wachstumFix", "Wachstum Fixkosten", "%"], ["fixkostenDeckel", "Fixkosten höchstens", "€"]]],
+      ["Startwerte im Startjahr: Einnahmen & Fixkosten", [["einnahmen", "Einnahmen netto / Monat", "€"], ["wachstumEinnahmen", "Wachstum Einnahmen", "%"], ["einnahmenDeckel", "Einnahmen höchstens", "€"], ["fixkosten", "Fixkosten / Monat", "€"], ["wachstumFix", "Wachstum Fixkosten", "%"], ["fixkostenDeckel", "Fixkosten höchstens", "€"]]],
       ["Töpfe", [["etfMindest", "ETF-Mindestbetrag", "€"], ["lebensqualitaet", "Lebensqualität", "€"], ["kfw1Sonder", "KfW-Sondertilgung", "€"], ["autoPauschale", "Auto-Pauschale", "€"], ["kindSparrate", "Kind-Sparrate", "€"], ["hausEkRate", "Haus-EK / Monat", "€"], ["hausEkZiel", "Haus-EK-Ziel", "€"], ["notgroschenRate", "Notgroschen / Monat", "€"], ["notgroschenZiel", "Notgroschen-Ziel", "€"]]],
       ["Startbestände & Rendite", [["etfStart", "ETF heute", "€"], ["notgroschenStart", "Notgroschen heute", "€"], ["hausEkStart", "Haus-EK heute", "€"], ["kfw1Rest", "KfW 1 Restschuld", "€"], ["kfw2Rest", "KfW 2 Restschuld", "€"], ["etfRendite", "ETF-Rendite p. a.", "%"], ["notgroschenZins", "Notgroschen-Zins p. a.", "%"]]]
     ];
@@ -93,7 +99,10 @@
         var v = a[f[0]], shown = f[2] === "%" ? c.fmt.format(v * 100) + " %" : f[2] === "j" ? String(v) : eur(v);
         return "<div><dt>" + f[1] + "</dt><dd>" + (zu.edit ? '<input class="in-num" inputmode="decimal" data-act="zFi" data-k="' + f[0] + '" data-t="' + f[2] + '" value="' + (f[2] === "%" ? c.fmt.format(v * 100) : f[2] === "j" ? v : c.fmt.format(v)) + '">' : '<span class="num">' + shown + "</span>") + "</dd></div>";
       }).join("") + "</dl></div>";
-    }).join("") + '</div><p class="muted small">Haus-EK-Ziel kommt heute aus dem Hauskauf-Szenario (' + (a.hausEkZielAusHauskauf ? "gekoppelt" : "nicht gekoppelt") + "). KfW-Tilgungspläne und Lebensereignisse lasse ich im Entwurf unverändert.</p></div>";
+    }).join("") + "</div>" +
+      (a.fixkosten > a.fixkostenDeckel ? '<p class="note">Achtung: Deine Fixkosten (' + eur(a.fixkosten) + ") liegen über dem Deckel (" + eur(a.fixkostenDeckel) + "). Ab dem 2. Jahr rechnet die App deshalb mit " + eur(a.fixkostenDeckel) + ", die Fixkosten fallen also plötzlich.</p>" : "") +
+      (a.einnahmen > a.einnahmenDeckel ? '<p class="note">Achtung: Deine Einnahmen liegen über dem Deckel (' + eur(a.einnahmenDeckel) + "). Ab dem 2. Jahr rechnet die App mit dem Deckel.</p>" : "") +
+      fromMonth(c, a) + '<p class="muted small">Haus-EK-Ziel kommt heute aus dem Hauskauf-Szenario (' + (a.hausEkZielAusHauskauf ? "gekoppelt" : "nicht gekoppelt") + "). Die KfW-Tilgungspläne lasse ich im Entwurf unverändert.</p></div>";
 
     /* ---------- Prüfpunkte ---------- */
     var checks = pruefpunkte(c, a, r);
@@ -104,10 +113,101 @@
     }).join("") + "</div></div>";
 
     return '<h1 class="page-t">Zukunft</h1><p class="lead muted">So rechnet die FI-Planung heute, Schritt für Schritt. Noch ist nichts geändert.</p>' +
-      '<div class="z-top">' + hero + slider + "</div>" + '<div class="z-steps">' + s1 + s2 + s3 + s4 + "</div>" + ann + pp;
+      '<div class="z-top">' + hero + slider + "</div>" + '<div class="z-steps">' + s1 + s2 + "</div>" + stand + verlauf + '<div class="z-steps">' + s3 + s4 + "</div>" + ann + events(c, a) + pp;
 
     function calcRow(label, v, hint) { return '<li><span>' + label + (hint ? ' <em class="muted">' + esc(hint) + "</em>" : "") + "</span>" + money(v) + "</li>"; }
     function fmtP(v) { return c.fmt.format(v * 100).replace(/,00$/, "") + " %"; }
+  }
+
+  /* Alle 7 Töpfe auf einen Blick: diesen Monat, bisher insgesamt, Stand/Ziel */
+  function standCard(c, a, years, y) {
+    var eur0 = c.eur0, upto = years.filter(function (x) { return x.jahr <= y.jahr; });
+    function sum(f) { return upto.reduce(function (s, x) { return s + f(x) * x.monate; }, 0); }
+    var etfMin = function (x) { return Math.min(a.etfMindest, Math.max(0, x.frei)); };
+    var kfwStart = Math.abs(a.kfw1Rest || 0) + Math.abs(a.kfw2Rest || 0), kfwNow = Math.max(0, -(y.kfw1 + y.kfw2)) || 0;
+    function bar(v, max) { return '<div class="st-bar"><span style="width:' + Math.max(0, Math.min(100, v / (max || 1) * 100)).toFixed(1) + '%"></span></div>'; }
+    var rows = [
+      [1, "ETF-Mindestbetrag", "gespart", etfMin(y), sum(etfMin), "eingezahlt", ""],
+      [2, "Lebensqualität", "ausgegeben", y.allocLebensqual, sum(function (x) { return x.allocLebensqual; }), "ausgegeben", ""],
+      [3, "KfW-Sondertilgung", "getilgt", y.allocSonder, sum(function (x) { return x.allocSonder; }), "zusätzlich getilgt",
+        '<span>Restschuld KfW ' + eur0(kfwNow) + " von " + eur0(kfwStart) + "</span>" + bar(kfwStart - kfwNow, kfwStart)],
+      [4, "Auto + Kind", "ausgegeben", y.allocAutoKind, sum(function (x) { return x.allocAutoKind; }), "ausgegeben", ""],
+      [5, "Haus-Eigenkapital", "gespart", y.allocHausEk, sum(function (x) { return x.allocHausEk; }), "eingezahlt", "<span>" + eur0(y.hausEk) + " von " + eur0(a.hausEkZiel) + "</span>" + bar(y.hausEk, a.hausEkZiel)],
+      [6, "Notgroschen", "gespart", y.allocNotgroschen, sum(function (x) { return x.allocNotgroschen; }), "eingezahlt", "<span>" + eur0(y.notgroschen) + " von " + eur0(a.notgroschenZiel) + "</span>" + bar(y.notgroschen, a.notgroschenZiel)],
+      [7, "ETF: der ganze Rest", "gespart", y.allocEtf - etfMin(y), sum(function (x) { return x.allocEtf - etfMin(x); }), "eingezahlt", "<span>ETF gesamt " + eur0(y.etf) + " (mit Rendite)</span>"]
+    ];
+    return '<div class="card z-stand"><div class="card-head"><h2>Alle Töpfe Ende ' + y.jahr + '</h2><span class="muted small">Jahr oben ändern</span></div><table class="st-tbl"><thead><tr><th></th><th>Topf</th><th class="r">pro Monat ' + y.jahr + '</th><th class="r">bis Ende ' + y.jahr + ' insgesamt</th><th>Stand / Ziel</th></tr></thead><tbody>' + rows.map(function (x) {
+      return '<tr class="art-' + x[2] + '"><td><span class="pot-n">' + x[0] + '</span></td><td><b>' + x[1] + '</b> <span class="pot-tag">' + x[2] + '</span></td><td class="r num">' + eur0(x[3]) + '</td><td class="r"><span class="num">' + eur0(x[4]) + '</span> <em class="muted small">' + x[5] + '</em></td><td class="st-goal">' + (x[6] || '<span class="muted small">–</span>') + "</td></tr>";
+    }).join("") + "</tbody></table></div>";
+  }
+
+  /* Jeder Topf als eigene Zeile über alle Jahre: Balken = bekommt pro Monat, Linie = will */
+  function verlaufCard(c, a, years, fiJ) {
+    var eur0 = c.eur0;
+    var etfMin = function (x) { return Math.min(a.etfMindest, Math.max(0, x.frei)); };
+    var defs = [
+      ["ETF-Mindestbetrag", "gespart", etfMin, function () { return a.etfMindest; }],
+      ["Lebensqualität", "ausgegeben", function (x) { return x.allocLebensqual; }, function () { return a.lebensqualitaet; }],
+      ["KfW-Sondertilgung", "getilgt", function (x) { return x.allocSonder; }, function () { return a.kfw1Sonder; }],
+      ["Auto + Kind", "ausgegeben", function (x) { return x.allocAutoKind; }, function () { return a.autoPauschale + a.kindSparrate; }],
+      ["Haus-Eigenkapital", "gespart", function (x) { return x.allocHausEk; }, function () { return a.hausEkRate; }],
+      ["Notgroschen", "gespart", function (x) { return x.allocNotgroschen; }, function () { return a.notgroschenRate; }],
+      ["ETF: der ganze Rest", "gespart", function (x) { return x.allocEtf - etfMin(x); }, null]
+    ];
+    var max = 0; defs.forEach(function (d) { years.forEach(function (x) { max = Math.max(max, d[2](x), d[3] ? d[3]() : 0); }); });
+    function story(d) {
+      var vals = years.map(function (x) { return d[2](x); }), will = d[3] ? d[3]() : null;
+      var firstFull = will ? years.find(function (x) { return d[2](x) >= will - 0.5; }) : null, lastPos = null;
+      years.forEach(function (x) { if (d[2](x) > 0.5) lastPos = x.jahr; });
+      if (!will) { var f = years.find(function (x) { return d[2](x) > 0.5; }); return f ? "bekommt Geld ab " + f.jahr + ", " + eur0(vals[vals.length - 1]) + "/Monat am Ende" : "bekommt nie etwas"; }
+      if (lastPos === null) return "bekommt nie etwas";
+      var t = firstFull ? (firstFull.jahr === years[0].jahr ? "von Anfang an voll" : "voll ab " + firstFull.jahr) : "nie ganz voll";
+      if (lastPos < years[years.length - 1].jahr) t += ", endet nach " + lastPos;
+      return t;
+    }
+    return '<div class="card z-verlauf"><div class="card-head"><h2>So entwickeln sich die 7 Töpfe</h2><span class="muted small">Balken = bekommt pro Monat · Strich = will · Balken antippen wählt das Jahr</span></div>' +
+      '<div class="vl">' + defs.map(function (d, i) {
+        var will = d[3] ? d[3]() : null;
+        return '<div class="vl-row art-' + d[1] + '"><div class="vl-l"><span class="pot-n">' + (i + 1) + '</span><div><b>' + d[0] + '</b><span class="muted small">' + story(d) + '</span></div></div><div class="vl-bars">' +
+          (will ? '<span class="vl-will" style="bottom:' + (will / max * 100).toFixed(1) + '%"></span>' : "") +
+          years.map(function (x) {
+            var v = d[2](x);
+            return '<button class="vl-b' + (x.jahr === zu.year ? " sel" : "") + (x.jahr === fiJ ? " fi" : "") + '" data-act="zSetYear" data-y="' + x.jahr + '" title="' + x.jahr + ": " + eur0(v) + ' pro Monat"><span style="height:' + (v / max * 100).toFixed(1) + '%"></span></button>';
+          }).join("") + "</div></div>";
+      }).join("") + '<div class="vl-row vl-axis"><div></div><div class="vl-years"><span>' + years[0].jahr + "</span><span>frei " + fiJ + "</span><span>" + years[years.length - 1].jahr + "</span></div></div></div></div>";
+  }
+
+  /* Startwerte aus einem Monat übernehmen */
+  function fromMonth(c, a) {
+    var months = c.months(), mk = zu.src && months.indexOf(zu.src) !== -1 ? zu.src : c.state.active;
+    var items = c.state.expected.filter(function (i) { return i.aktiv && i.typ !== "Schulden"; });
+    if (!zu.pick) { zu.pick = {}; items.forEach(function (i) { zu.pick[i.id] = true; }); }
+    var ein = 0, fix = 0;
+    var list = function (typ) {
+      return items.filter(function (i) { return i.typ === typ; }).map(function (i) {
+        var v = c.sollOf(mk, i); if (zu.pick[i.id]) { if (typ === "Einnahme") ein += v; else fix += -v; }
+        return '<label class="fm-i"><input type="checkbox" data-act="zPick" data-id="' + i.id + '"' + (zu.pick[i.id] ? " checked" : "") + "> <span>" + c.esc(i.beschreibung) + '</span><span class="num muted">' + c.eur(v) + "</span></label>";
+      }).join("");
+    };
+    var le = list("Einnahme"), lf = list("Fixkosten");
+    return '<details class="fm"' + (zu.fmOpen ? " open" : "") + '><summary>↧ Startwerte aus einem Monat übernehmen</summary><div class="fm-b">' +
+      '<label class="fm-m"><span>Monat</span><select data-act="zSrc">' + months.map(function (m) { return '<option value="' + m + '"' + (m === mk ? " selected" : "") + ">" + c.mLabel(m, true) + "</option>"; }).join("") + "</select></label>" +
+      '<div class="fm-cols"><div><h4>Einnahmen</h4>' + le + '<div class="fm-sum">= ' + c.eur(ein) + '</div></div><div><h4>Fixkosten</h4>' + lf + '<div class="fm-sum">= ' + c.eur(fix) + "</div></div></div>" +
+      '<p class="muted small">Kredite (KfW, Konsumkredit) zählen hier nicht mit, die rechnet die Zukunft über die Tilgungspläne.</p>' +
+      c.btn("Übernehmen: Einnahmen " + c.eur0(ein) + " · Fixkosten " + c.eur0(fix), "zTake", ' data-e="' + ein + '" data-f="' + fix + '"', "btn-primary") + "</div></details>";
+  }
+
+  /* Lebensereignisse eintragen */
+  function events(c, a) {
+    var ev = (a.events || []).map(function (e, i) { return { e: e, i: i }; }).sort(function (x, y) { return x.e.jahr - y.e.jahr; });
+    return '<div class="card"><div class="card-head"><h2>Lebensereignisse</h2><span class="muted small">Kosten mit Minus eintragen, z. B. −20.000 für ein Auto</span></div>' +
+      '<ul class="ev-list">' + ev.map(function (x) {
+        return '<li><input class="in-num ev-j" inputmode="numeric" data-act="zEv" data-i="' + x.i + '" data-f="jahr" value="' + x.e.jahr + '">' +
+          '<input class="ev-t" data-act="zEv" data-i="' + x.i + '" data-f="beschreibung" value="' + c.esc(x.e.beschreibung) + '">' +
+          '<input class="in-num" inputmode="decimal" data-act="zEv" data-i="' + x.i + '" data-f="betrag" value="' + c.fmt.format(Number(x.e.betrag) || 0) + '">' +
+          '<span class="muted small ev-m">' + (Number(x.e.betrag) ? "= " + c.eur0(x.e.betrag / 12) + "/Monat" : "zählt nicht") + "</span>" + c.btn("✕", "zEvDel", ' data-i="' + x.i + '"', "btn-sm btn-ghost") + "</li>";
+      }).join("") + "</ul>" + c.btn("＋ Ereignis", "zEvAdd", "", "btn-sm") +
+      '<p class="muted small">Achtung (Prüfpunkt 3): Große Beträge machen dich in der heutigen Rechnung nur teilweise ärmer.</p></div>';
   }
 
   function step(n, title, sub, body) {
@@ -213,10 +313,20 @@
   function handle(c, a, d, el) {
     if (a === "zSetYear") { zu.year = +d.y; return true; }
     if (a === "zEdit") { zu.edit = !zu.edit; return true; }
+    if (a === "zTake") { c.mark("Startwerte aus Monat übernommen"); c.state.fi.einnahmen = Math.round(+d.e * 100) / 100; c.state.fi.fixkosten = Math.round(+d.f * 100) / 100; zu.fmOpen = false; c.toast("Startwerte übernommen."); return true; }
+    if (a === "zEvAdd") { c.mark("Ereignis hinzugefügt"); (c.state.fi.events = c.state.fi.events || []).push({ jahr: c.state.fi.startjahr + 1, beschreibung: "Neues Ereignis", betrag: 0 }); return true; }
+    if (a === "zEvDel") { c.mark("Ereignis gelöscht"); c.state.fi.events.splice(+d.i, 1); return true; }
     return false;
   }
   function change(c, el) {
     if (el.dataset.act === "zYear") { zu.year = +el.value; return true; }
+    if (el.dataset.act === "zSrc") { zu.src = el.value; zu.fmOpen = true; return true; }
+    if (el.dataset.act === "zPick") { zu.pick[el.dataset.id] = el.checked; zu.fmOpen = true; return true; }
+    if (el.dataset.act === "zEv") {
+      var e = c.state.fi.events[+el.dataset.i], f = el.dataset.f; c.mark("Ereignis geändert");
+      if (f === "beschreibung") e.beschreibung = el.value; else { var n2 = c.parseNum(el.value); if (!isNaN(n2)) e[f] = f === "jahr" ? Math.round(n2) : n2; }
+      return true;
+    }
     if (el.dataset.act === "zFi") {
       var n = c.parseNum(el.value); if (isNaN(n)) return true;
       if (el.dataset.t === "%") n = n / 100;
