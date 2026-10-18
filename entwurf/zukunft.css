@@ -190,3 +190,18 @@ label.pal { cursor: pointer; }
 .pp-tbl thead th:first-child { text-align: left; }
 .pp-tbl tr:last-child td { font-weight: 400; }
 .pp-tbl td:last-child { font-weight: 800; color: var(--accent); }
+/* Lebensereignisse: woher das Geld kommt */
+.ev-cards { list-style: none; margin: 10px 0; padding: 0; display: grid; gap: 10px; }
+.ev-card { border: 1px solid var(--line); border-radius: 16px; padding: 12px; background: var(--surface2); display: grid; gap: 10px; }
+.ev-card.warn { border-color: color-mix(in srgb, var(--neg) 45%, transparent); }
+.ev-in { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ev-in input, .ev-in select { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 7px 10px; font-size: 14px; color: var(--ink); }
+.ev-in .ev-j { width: 76px; } .ev-in .ev-t { flex: 1; min-width: 160px; } .ev-in .in-num { width: 120px; }
+.ev-bar { display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: var(--line); }
+.ev-bar span { display: block; height: 100%; }
+.ev-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ev-tbl th { text-align: left; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 4px 8px; }
+.ev-tbl td { padding: 6px 8px; border-top: 1px solid var(--line); }
+.ev-tbl td i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.ev-tbl td.num { text-align: left; }
+.ev-empty > summary { cursor: pointer; color: var(--muted); font-size: 13px; margin: 6px 0; }

@@ -80,7 +80,7 @@
 
     /* Schritt 3 */
     var ev = y.events, pd = y.eventPaid;
-    var evTxt = ev < 0 ? "bezahlt aus " + [pd.etf ? "ETF " + eur0(pd.etf) : "", pd.ng ? "Notgroschen " + eur0(pd.ng) : "", pd.hek ? "Haus-EK " + eur0(pd.hek) : "", pd.fehl ? "⚠ Fehlbetrag " + eur0(pd.fehl) : ""].filter(Boolean).join(", ") : ev > 0 ? "kommt in den ETF" : "";
+    var evTxt = ev < 0 ? "bezahlt aus " + [pd.etf ? "ETF-Depot " + eur0(pd.etf) : "", pd.ng ? "Notgroschen " + eur0(pd.ng) : "", pd.hek ? "Haus-EK " + eur0(pd.hek) : "", pd.kind ? "Kinder-Sparen " + eur0(pd.kind) : "", pd.fehl ? "⚠ Fehlbetrag " + eur0(pd.fehl) : ""].filter(Boolean).join(", ") : ev > 0 ? "kommt in den ETF" : "";
     var s3 = step(3, "Wie wächst dein Vermögen?", "Bestände am Ende jedes Jahres",
       stackChart(years, zu.year, r.fiJahr) +
       '<div class="z-legend small"><span><i style="background:var(--c-etf)"></i>ETF (+' + pct(a.etfRendite) + ')</span><span><i style="background:var(--c-hek)"></i>Haus-EK</span><span><i style="background:var(--c-kind)"></i>Kinder-Sparen</span><span><i style="background:var(--c-ng)"></i>Notgroschen</span><span><i style="background:var(--c-kfw)"></i>KfW-Schulden</span></div>' +
@@ -201,22 +201,45 @@
         : '<p class="muted small fm-b">Du trägst Einnahmen und Fixkosten oben unter „Bearbeiten“ selbst ein.</p>') + "</div>";
   }
 
-  /* ---------- Lebensereignisse ---------- */
+  /* ---------- Lebensereignisse: jedes zeigt genau, woher das Geld kommt ---------- */
+  var QUELLEN = [["auto", "automatisch (ETF → Notgroschen → Haus-EK)"], ["etf", "nur ETF-Depot"], ["ng", "nur Notgroschen"], ["hek", "nur Haus-EK"], ["kind", "nur Kinder-Sparen"]];
+  var TOPF = { etf: ["ETF-Depot", "var(--c-etf)"], ng: ["Notgroschen", "var(--c-ng)"], hek: ["Haus-EK", "var(--c-hek)"], kind: ["Kinder-Sparen", "var(--c-kind)"], fehl: ["Fehlbetrag", "var(--neg)"] };
   function events(c, a, r) {
-    var src = c.state.fi, ev = (src.events || []).map(function (e, i) { return { e: e, i: i }; }).sort(function (x, y) { return x.e.jahr - y.e.jahr; });
+    var src = c.state.fi, eur0 = c.eur0, list = (src.events || []).map(function (e, i) { return { e: e, i: i }; }).sort(function (x, y) { return x.e.jahr - y.e.jahr || x.i - y.i; });
+    var withAmt = list.filter(function (x) { return Number(x.e.betrag); }), without = list.filter(function (x) { return !Number(x.e.betrag); });
+    function detailFor(x) {
+      var y = r.years.find(function (yy) { return yy.jahr === Number(x.e.jahr); });
+      return y ? (y.eventDetails || []).find(function (d) { return d.index === x.i; }) : null;
+    }
+    function inputsRow(x) {
+      return '<div class="ev-in"><input class="in-num ev-j" inputmode="numeric" data-act="zEv" data-i="' + x.i + '" data-f="jahr" value="' + x.e.jahr + '" aria-label="Jahr">' +
+        '<input class="ev-t" data-act="zEv" data-i="' + x.i + '" data-f="beschreibung" value="' + c.esc(x.e.beschreibung || "") + '" aria-label="Beschreibung">' +
+        '<input class="in-num" inputmode="decimal" data-act="zEv" data-i="' + x.i + '" data-f="betrag" value="' + c.fmt.format(Number(x.e.betrag) || 0) + '" aria-label="Betrag">' +
+        (Number(x.e.betrag) < 0 ? '<select data-act="zEv" data-i="' + x.i + '" data-f="quelle" aria-label="Bezahlen aus">' + QUELLEN.map(function (q) { return '<option value="' + q[0] + '"' + ((x.e.quelle || "auto") === q[0] ? " selected" : "") + ">" + q[1] + "</option>"; }).join("") + "</select>" : "") +
+        c.btn("✕", "zEvDel", ' data-i="' + x.i + '"', "btn-sm btn-ghost") + "</div>";
+    }
+    function card(x) {
+      var d = detailFor(x), b = Number(x.e.betrag) || 0, body;
+      if (!d) body = '<p class="muted small">Liegt außerhalb der Rechnung (' + r.years[0].jahr + "–" + r.years[r.years.length - 1].jahr + ").</p>";
+      else if (b > 0) body = '<p class="small">Kommt ins <b>ETF-Depot</b>: ' + eur0(d.before.etf) + " → " + eur0(d.after.etf) + "</p>";
+      else {
+        var srcKeys = { auto: ["etf", "ng", "hek"], etf: ["etf"], ng: ["ng"], hek: ["hek"], kind: ["kind"] }[d.quelle] || ["etf", "ng", "hek"];
+        var keys = srcKeys.filter(function (k) { return d.paid[k] > 0.5 || d.quelle !== "auto"; }).concat(d.paid.fehl > 0.5 ? ["fehl"] : []);
+        var shownAfter = function (k) { return k === "etf" ? d.after.etf + d.paid.fehl : d.after[k]; };
+        var bar = '<div class="ev-bar">' + keys.filter(function (k) { return d.paid[k] > 0.5; }).map(function (k) { return '<span style="width:' + (d.paid[k] / -b * 100).toFixed(1) + "%;background:" + TOPF[k][1] + '" title="' + TOPF[k][0] + " " + eur0(d.paid[k]) + '"></span>'; }).join("") + "</div>";
+        var rows = keys.map(function (k) {
+          return "<tr><td><i style=\"background:" + TOPF[k][1] + '"></i>' + TOPF[k][0] + '</td><td class="num">' + eur0(d.paid[k]) + "</td><td class=\"num muted\">" + (k === "fehl" ? "musst du dir leihen" : eur0(d.before[k]) + " → " + eur0(shownAfter(k)) + (d.before[k] < 0.5 ? " (leer)" : "")) + "</td></tr>";
+        }).join("");
+        body = bar + '<table class="ev-tbl"><thead><tr><th>bezahlt aus</th><th>Betrag</th><th>Stand Ende ' + x.e.jahr + ": vorher → nachher</th></tr></thead><tbody>" + rows + "</tbody></table>" +
+          (d.paid.fehl > 0.5 ? '<p class="note">' + eur0(d.paid.fehl) + " fehlen in " + x.e.jahr + ". Die Rechnung führt sie als Minus im ETF-Depot weiter, als hättest du dir das Geld zur ETF-Rendite geliehen. Die folgenden Jahre zahlen es zurück.</p>" : "");
+      }
+      return '<li class="ev-card' + (d && d.paid.fehl > 0.5 ? " warn" : "") + '">' + inputsRow(x) + body + "</li>";
+    }
     return '<div class="card"><div class="card-head"><h2>Lebensereignisse</h2><span class="muted small">Kosten mit Minus eintragen, z. B. −20.000 für ein Auto</span></div>' +
-      '<ul class="ev-list">' + ev.map(function (x) {
-        var y = r.years.find(function (yy) { return yy.jahr === Number(x.e.jahr); }), b = Number(x.e.betrag) || 0, info;
-        if (!b) info = "zählt nicht (0 €)";
-        else if (!y) info = "liegt außerhalb der Rechnung";
-        else if (b > 0) info = "kommt in den ETF";
-        else { var p = y.eventPaid; info = p.fehl > 0.5 ? "⚠ " + c.eur0(p.fehl) + " fehlen in diesem Jahr" : "wird aus dem Ersparten bezahlt"; }
-        return '<li><input class="in-num ev-j" inputmode="numeric" data-act="zEv" data-i="' + x.i + '" data-f="jahr" value="' + x.e.jahr + '">' +
-          '<input class="ev-t" data-act="zEv" data-i="' + x.i + '" data-f="beschreibung" value="' + c.esc(x.e.beschreibung || "") + '">' +
-          '<input class="in-num" inputmode="decimal" data-act="zEv" data-i="' + x.i + '" data-f="betrag" value="' + c.fmt.format(b) + '">' +
-          '<span class="small ev-m ' + (info.indexOf("⚠") === 0 ? "neg" : "muted") + '">' + info + "</span>" + c.btn("✕", "zEvDel", ' data-i="' + x.i + '"', "btn-sm btn-ghost") + "</li>";
-      }).join("") + "</ul>" + c.btn("＋ Ereignis", "zEvAdd", "", "btn-sm") +
-      '<p class="muted small">Kosten werden voll abgezogen: zuerst aus dem ETF, dann aus dem Notgroschen, dann aus dem Haus-EK. Reicht das nicht, entsteht ein Fehlbetrag (du müsstest dir Geld leihen). Positive Beträge, z. B. ein Erbe, kommen in den ETF.</p></div>';
+      '<p class="muted small">Wichtig: Es gibt nur <b>ein</b> ETF-Depot. Die Töpfe 1 (ETF-Mindestbetrag) und 8 (ETF-Rest) zahlen beide dort ein. Kosten werden am Ende des Jahres bezahlt, also nachdem die Sparraten des Jahres eingezahlt sind.</p>' +
+      '<ul class="ev-cards">' + withAmt.map(card).join("") + "</ul>" +
+      (without.length ? '<details class="ev-empty"' + (zu.evEmptyOpen ? " open" : "") + '><summary>' + without.length + " Ereignisse ohne Betrag (zählen nicht)</summary><ul class=\"ev-cards\">" + without.map(function (x) { return '<li class="ev-card">' + inputsRow(x) + "</li>"; }).join("") + "</ul></details>" : "") +
+      c.btn("＋ Ereignis", "zEvAdd", "", "btn-sm") + "</div>";
   }
 
   /* ---------- Was korrigiert wurde: alt gegen neu, live ---------- */
@@ -301,7 +324,7 @@
     if (act === "zVlMode") { zu.vlMode = d.m; return true; }
     if (act === "zVl") { zu.vlStart = +d.s; return true; }
     if (act === "zAus") { c.mark("Quelle für Startwerte geändert"); if (d.v === "0" && a.ausMonat) { var mv = monthValues(c, a); a.einnahmen = mv.ein; a.fixkosten = mv.fix; } a.ausMonat = d.v === "1"; return true; }
-    if (act === "zEvAdd") { c.mark("Ereignis hinzugefügt"); (a.events = a.events || []).push({ jahr: new Date().getFullYear() + 1, beschreibung: "Neues Ereignis", betrag: 0 }); return true; }
+    if (act === "zEvAdd") { c.mark("Ereignis hinzugefügt"); (a.events = a.events || []).push({ jahr: new Date().getFullYear() + 1, beschreibung: "Neues Ereignis", betrag: -1000 }); return true; }
     if (act === "zEvDel") { c.mark("Ereignis gelöscht"); a.events.splice(+d.i, 1); return true; }
     return false;
   }
@@ -313,7 +336,7 @@
     if (act === "zBed") { c.mark("Lebensbedarf geändert"); a.fiBedarf[el.dataset.k] = el.checked; return true; }
     if (act === "zEv") {
       var e = a.events[+el.dataset.i], f = el.dataset.f; c.mark("Ereignis geändert");
-      if (f === "beschreibung") e.beschreibung = el.value; else { var n2 = c.parseNum(el.value); if (!isNaN(n2)) e[f] = f === "jahr" ? Math.round(n2) : n2; }
+      if (f === "beschreibung" || f === "quelle") e[f] = el.value; else { var n2 = c.parseNum(el.value); if (!isNaN(n2)) e[f] = f === "jahr" ? Math.round(n2) : n2; }
       return true;
     }
     if (act === "zFi") {

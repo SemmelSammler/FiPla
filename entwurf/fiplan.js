@@ -67,16 +67,25 @@
       if (a.hauskaufJahr && jahr === Number(a.hauskaufJahr) && !hekGekauft) { hekEingesetzt = hek; hek = 0; hekGekauft = true; }
 
       // Lebensereignisse: voller Betrag, Kosten zuerst aus ETF, dann Notgroschen, Rest = Fehlbetrag
-      var evSum = (a.events || []).filter(function (e) { return Number(e.jahr) === jahr; }).reduce(function (s, e) { return s + (Number(e.betrag) || 0); }, 0);
-      var paid = { etf: 0, ng: 0, hek: 0, fehl: 0 };
-      if (evSum > 0) { etf += evSum; paid.etf = -evSum; }
-      else if (evSum < 0) {
-        var need = -evSum;
-        paid.etf = Math.min(need, Math.max(0, etf)); etf -= paid.etf; need -= paid.etf;
-        paid.ng = Math.min(need, Math.max(0, ng)); ng -= paid.ng; need -= paid.ng;
-        paid.hek = Math.min(need, Math.max(0, hek)); hek -= paid.hek; need -= paid.hek;
-        paid.fehl = need; etf -= need;                                  // Fehlbetrag: ETF wird negativ (= Schulden)
-      }
+      // Lebensereignisse einzeln, voller Betrag. Quelle pro Ereignis wählbar (Standard: ETF → Notgroschen → Haus-EK).
+      // Reicht das nicht, entsteht ein Fehlbetrag: das ETF-Depot wird negativ (= du müsstest dir Geld leihen).
+      var ORDER = { auto: ["etf", "ng", "hek"], etf: ["etf"], ng: ["ng"], hek: ["hek"], kind: ["kind"] };
+      var evSum = 0, paid = { etf: 0, ng: 0, hek: 0, kind: 0, fehl: 0 }, evDetails = [];
+      (a.events || []).forEach(function (e, idx) {
+        if (Number(e.jahr) !== jahr) return;
+        var amt = Number(e.betrag) || 0; if (!amt) return;
+        var st = { etf: etf, ng: ng, hek: hek, kind: kind }, before = { etf: etf, ng: ng, hek: hek, kind: kind };
+        var p = { etf: 0, ng: 0, hek: 0, kind: 0, fehl: 0 };
+        if (amt > 0) { st.etf += amt; p.etf = -amt; }
+        else {
+          var need = -amt;
+          (ORDER[e.quelle] || ORDER.auto).forEach(function (k) { var t = Math.min(need, Math.max(0, st[k])); st[k] -= t; p[k] += t; need -= t; });
+          p.fehl = need; st.etf -= need;
+        }
+        etf = st.etf; ng = st.ng; hek = st.hek; kind = st.kind; evSum += amt;
+        Object.keys(p).forEach(function (k) { paid[k] += p[k]; });
+        evDetails.push({ index: idx, betrag: amt, quelle: e.quelle || "auto", paid: p, before: before, after: { etf: etf, ng: ng, hek: hek, kind: kind } });
+      });
 
       var fiCap = ng + etf;                                             // ohne Haus-EK und Kinder-Topf
       var bedarf = fix + (bedarfMit.lq ? a.lebensqualitaet : 0) + (bedarfMit.auto ? a.autoPauschale : 0);
@@ -87,7 +96,7 @@
         jahr: jahr, alter: jahr - geburtsjahr, monate: monate, einnahmen: einn, fixkosten: fix, kfw1Pfl: kfw1Pfl, kfw2Pfl: kfw2Pfl, frei: frei,
         allocEtfMin: etfFloor, allocLebensqual: lq, allocSonder: sonder, allocAuto: auto, allocKind: kindAlloc, allocHausEk: hekAlloc, allocNotgroschen: ngAlloc, allocEtfRest: etfRest,
         notgroschen: ng, hausEk: hek, kind: kind, etf: etf, kfw1: kfw1, kfw2: kfw2, hekEingesetzt: hekEingesetzt,
-        events: evSum, eventPaid: paid, fiCap: fiCap, bedarf: bedarf, fi: fi,
+        events: evSum, eventPaid: paid, eventDetails: evDetails, fiCap: fiCap, bedarf: bedarf, fi: fi,
         vermoegen: ng + hek + kind + etf + kfw1 + kfw2
       });
     }
