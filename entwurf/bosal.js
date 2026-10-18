@@ -56,8 +56,11 @@
   function undo() { var h = hist.past.pop(); if (!h) return; hist.future.push({ label: h.label, snap: JSON.stringify(state) }); restore(h.snap); toast("Rückgängig: " + h.label); }
   function redo() { var h = hist.future.pop(); if (!h) return; hist.past.push({ label: h.label, snap: JSON.stringify(state) }); restore(h.snap); toast("Wiederholt: " + h.label); }
 
-  var PALETTES = [["violett", "Violett", "#6A5AE0", "#EB4F78"], ["ozean", "Ozean", "#1E6FD9", "#18B6A6"], ["wald", "Wald", "#2F7D4F", "#B7C94A"], ["koralle", "Koralle", "#E2574C", "#F2A93B"], ["sand", "Sand", "#8C6A4B", "#D9A86C"], ["nacht", "Nacht", "#8B7CFF", "#2CD4B0"]];
-  var ui = { palette: "violett", view: "monat", modal: null, repMonth: null, shareMode: true, sortOpen: false, skipped: {}, toast: null, addArt: "forderung", showDone: false };
+  // Farbpalette und Hell/Dunkel sind getrennt: jede Palette funktioniert in beiden Modi
+  var PALETTES = [["violett", "Violett", "#6A5AE0", "#EB4F78"], ["ozean", "Ozean", "#1E6FD9", "#18B6A6"], ["wald", "Wald", "#2F7D4F", "#A3B83A"], ["koralle", "Koralle", "#E2574C", "#F2A93B"], ["sand", "Sand", "#9A7652", "#D9A86C"],
+    ["beere", "Beere", "#B0306A", "#7A3FD1"], ["mint", "Mint", "#13A58A", "#7DD3A8"], ["petrol", "Petrol", "#0E6E80", "#3AA0C8"], ["gold", "Gold", "#B8860B", "#E8A33A"], ["graphit", "Graphit", "#3F4656", "#8A93A6"]];
+  var MODES = [["hell", "Hell"], ["dunkel", "Dunkel"], ["system", "Wie System"]];
+  var ui = { palette: "violett", mode: "hell", custom: null, view: "monat", modal: null, repMonth: null, shareMode: true, sortOpen: false, skipped: {}, toast: null, addArt: "forderung", showDone: false };
 
   /* ---------- Hilfen ---------- */
   var fmt = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -72,7 +75,7 @@
   function dLabel(iso) { var p = iso.split("-"); return p[2] + "." + p[1] + "."; }
   function tLabel(ts) { var d = new Date(ts); return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) + ", " + d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }); }
   function cat(id) { return state.categories.find(function (c) { return c.id === id; }) || { id: id, name: id === "sparen" ? "Sparen" : "Sonstiges", farbe: "#9aa0b8" }; }
-  function money(n, cls) { return '<span class="num ' + (cls != null ? cls : (n < 0 ? "neg" : n > 0 ? "pos" : "")) + '">' + eur(n) + "</span>"; }
+  function money(n, cls) { n = Math.round(n * 100) / 100 || 0; return '<span class="num ' + (cls != null ? cls : (n < 0 ? "neg" : n > 0 ? "pos" : "")) + '">' + eur(n) + "</span>"; }
   function btn(label, act, extra, kind) { return '<button class="btn ' + (kind || "") + '" data-act="' + act + '"' + (extra || "") + ">" + label + "</button>"; }
   function parseNum(s) { s = String(s || "").trim(); if (!s) return NaN; if (s.indexOf(",") !== -1 || /^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "").replace(",", "."); return parseFloat(s); }
   function isKK(t) { return /kreditkartenabrechnung/i.test((t.zweck || "") + " " + (t.text || "")); }
@@ -409,11 +412,8 @@
   }
 
   /* ================= Ansicht: Zukunft / Mehr ================= */
-  function viewZukunft() {
-    var r = L.runFI(state.fi);
-    return '<h1 class="page-t">Zukunft</h1><div class="card hero"><div class="hero-label">Finanziell frei ab</div><div class="hero-num num">' + r.fiJahr + '</div><div class="hero-sub">mit ' + r.fiAlter + " Jahren · " + eur0(r.cashflowHeute) + " frei pro Monat</div></div>" +
-      '<p class="muted" style="margin-top:16px">Die Planung übernehme ich im nächsten Schritt ins neue Design. Hier geht es erstmal um den Monat.</p>';
-  }
+  function zctx() { return { state: state, L: L, eur: eur, eur0: eur0, money: money, btn: btn, esc: esc, fmt: fmt, parseNum: parseNum, mark: mark }; }
+  function viewZukunft() { return window.BoSalZukunft.render(zctx()); }
   function viewMehr() {
     var items = ["Kontoauszug importieren (Giro- und Kreditkarten-CSV)", "Feste Posten & Kategorien", "Hauskauf · Kinder", "Backup & Einstellungen"];
     return '<h1 class="page-t">Mehr</h1><div class="card" style="margin-bottom:var(--gap)">' + palettePicker() + '</div><div class="card"><ul class="mehr-list">' + items.map(function (i) { return '<li><button class="mehr-btn" data-act="todo"><span class="mehr-t">' + i + '</span><span aria-hidden="true">→</span></button></li>'; }).join("") + "</ul></div>";
@@ -464,11 +464,24 @@
     return '<div class="overlay" data-act="closeModal"><div class="modal" role="dialog" aria-modal="true">' + body + "</div></div>";
   }
 
-  try { var sp = localStorage.getItem("bosal.palette"); if (sp && PALETTES.some(function (p) { return p[0] === sp; })) ui.palette = sp; } catch (e) {}
+  try {
+    var sp = localStorage.getItem("bosal.palette"); if (sp && (sp === "eigene" || PALETTES.some(function (p) { return p[0] === sp; }))) ui.palette = sp;
+    var sm = localStorage.getItem("bosal.mode"); if (sm) ui.mode = sm;
+    ui.custom = localStorage.getItem("bosal.custom") || "#E0457B";
+  } catch (e) { ui.custom = "#E0457B"; }
+  function applyTheme() {
+    var h = document.documentElement, dark = ui.mode === "dunkel" || (ui.mode === "system" && window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
+    var p = PALETTES.find(function (x) { return x[0] === ui.palette; });
+    var c1 = p ? p[2] : ui.custom, c2 = p ? p[3] : ui.custom;
+    h.setAttribute("data-mode", dark ? "dark" : "light");
+    h.style.setProperty("--p1", c1); h.style.setProperty("--p2", c2);
+  }
   function palettePicker() {
-    return '<div class="pal-pop"><div class="pal-t">Farbpalette</div><div class="pal-grid">' + PALETTES.map(function (p) {
+    return '<div class="pal-pop"><div class="pal-t">Darstellung</div><div class="seg seg-sm pal-modes">' + MODES.map(function (m) {
+      return '<button class="seg-b' + (m[0] === ui.mode ? " on" : "") + '" data-act="mode" data-m="' + m[0] + '">' + m[1] + "</button>";
+    }).join("") + '</div><div class="pal-t">Farbe</div><div class="pal-grid">' + PALETTES.map(function (p) {
       return '<button class="pal' + (p[0] === ui.palette ? " on" : "") + '" data-act="palette" data-p="' + p[0] + '"><span class="pal-sw" style="background:linear-gradient(135deg,' + p[2] + "," + p[3] + ')"></span>' + p[1] + "</button>";
-    }).join("") + "</div></div>";
+    }).join("") + '<label class="pal' + (ui.palette === "eigene" ? " on" : "") + '"><input type="color" data-act="customColor" value="' + ui.custom + '" class="pal-sw pal-color">Eigene</label></div></div>';
   }
 
   /* ================= Rahmen ================= */
@@ -480,18 +493,18 @@
       return '<button class="nav-i' + (ui.view === v[0] ? " on" : "") + '" data-act="go" data-view="' + v[0] + '"><span class="nav-l">' + v[1] + "</span>" + (v[0] === "offen" && nOpen ? '<span class="badge">' + nOpen + "</span>" : "") + "</button>";
     }).join("");
     var y = window.scrollY;
-    document.documentElement.setAttribute("data-palette", ui.palette);
+    applyTheme();
     document.getElementById("app").innerHTML =
       '<header class="top"><div class="brand"><span class="brand-mark" aria-hidden="true"></span>BoSal</div><div class="top-r"><button class="ur" data-act="undo"' + (hist.past.length ? ' title="Rückgängig: ' + esc(hist.past[hist.past.length - 1].label) + '"' : " disabled") + ' aria-label="Rückgängig">↶</button>' +
       '<button class="ur" data-act="redo"' + (hist.future.length ? ' title="Wiederholen: ' + esc(hist.future[hist.future.length - 1].label) + '"' : " disabled") + ' aria-label="Wiederholen">↷</button>' +
-      '<button class="ur" data-act="palOpen" aria-label="Farbpalette">🎨</button><span class="top-date">Entwurf 4</span>' + (ui.palOpen ? palettePicker() : "") + "</div></header>" +
+      '<button class="ur" data-act="palOpen" aria-label="Farbpalette">🎨</button><span class="top-date">Entwurf 5</span>' + (ui.palOpen ? palettePicker() : "") + "</div></header>" +
       '<nav class="nav" aria-label="Bereiche">' + nav + '</nav><main class="main">' + RENDER[ui.view]() + "</main>" + modal() +
       (ui.toast ? '<div class="toast" role="status">' + esc(ui.toast) + "</div>" : "");
     window.scrollTo(0, y);
   }
   function toast(msg) { ui.toast = msg; render(); clearTimeout(toast._t); toast._t = setTimeout(function () { ui.toast = null; render(); }, 3000); }
 
-  document.addEventListener("toggle", function (e) { var d = e.target; if (d.dataset && d.dataset.key) ui["open_" + d.dataset.key] = d.open; }, true);
+  document.addEventListener("toggle", function (e) { var d = e.target; if (d.dataset && d.dataset.key) ui["open_" + d.dataset.key] = d.open; if (d.dataset && d.dataset.pp) window.BoSalZukunft.zu.open[d.dataset.pp] = d.open; }, true);
   document.addEventListener("click", function (e) {
     var b = e.target.closest("[data-act]");
     if (ui.palOpen && !e.target.closest(".pal-pop") && (!b || b.dataset.act !== "palOpen")) { ui.palOpen = false; if (!b) { render(); return; } }
@@ -500,7 +513,9 @@
     var a = b.dataset.act, d = b.dataset;
     if (a === "go") { ui.view = d.view; ui.month = null; ui.sortOpen = false; window.scrollTo(0, 0); render(); return; }
     if (a === "palOpen") { ui.palOpen = !ui.palOpen; render(); return; }
-    if (a === "palette") { ui.palette = d.p; ui.palOpen = false; try { localStorage.setItem("bosal.palette", d.p); } catch (er) {} render(); return; }
+    if (a === "palette") { ui.palette = d.p; try { localStorage.setItem("bosal.palette", d.p); } catch (er) {} render(); return; }
+    if (a === "mode") { ui.mode = d.m; try { localStorage.setItem("bosal.mode", d.m); } catch (er) {} render(); return; }
+    if (window.BoSalZukunft && window.BoSalZukunft.handle(zctx(), a, d, b)) { render(); return; }
     if (a === "openMonth") { ui.month = d.month || null; ui.view = "monat"; window.scrollTo(0, 0); render(); return; }
     if (a === "ovrReset") { mark("Planwert zurückgesetzt"); delete state.overrides[d.m][d.id]; render(); return; }
     if (a === "ovrZero") { mark("Posten entfällt"); (state.overrides[d.m] = state.overrides[d.m] || {})[d.id] = 0; render(); return; }
@@ -587,8 +602,14 @@
     }
     if (a === "todo") { toast("Kommt im echten Umbau."); return; }
   });
+  document.addEventListener("input", function (e) {
+    if (e.target.dataset.act === "zYear" && window.BoSalZukunft.change(zctx(), e.target)) render();
+  });
   document.addEventListener("change", function (e) {
     var el = e.target;
+    if (el.dataset.act === "customColor") { ui.custom = el.value; ui.palette = "eigene"; try { localStorage.setItem("bosal.custom", el.value); localStorage.setItem("bosal.palette", "eigene"); } catch (er) {} render(); return; }
+    if (el.dataset.act === "zYear") return;
+    if (window.BoSalZukunft && window.BoSalZukunft.change(zctx(), el)) { render(); return; }
     if (el.dataset.act === "inclFix") { ui.inclFix = el.checked; render(); return; }
     if (el.dataset.act === "ovr") {
       var it = state.expected.find(function (x) { return x.id === el.dataset.id; }), n = parseNum(el.value);
