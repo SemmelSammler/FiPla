@@ -215,3 +215,20 @@ label.pal { cursor: pointer; }
 .st-tbl td.num em, .st-tbl td em.muted { display: block; font-style: normal; }
 .st-tbl tr.st-ev td { border-top: 2px solid var(--line-strong); background: color-mix(in srgb, var(--neg) 6%, transparent); }
 .ev-in .ev-mo { width: 76px; }
+/* Entwurf 11: Inhalt-Umschalter, Pause, Erklärung der Anschaffungen */
+.vt-tg { display: flex; gap: 8px; flex-wrap: wrap; }
+.vt td.paused { color: var(--warn-ink, var(--warn)); font-size: 11px; font-weight: 800; background: repeating-linear-gradient(135deg, var(--warn-soft) 0 4px, transparent 4px 8px); }
+.vt tr.vt-kredit th b { color: var(--neg); }
+.vt td.haswd { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--neg) 55%, transparent); }
+.story { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 12px; }
+.story h3 { margin: 0; font-size: 15px; }
+.story .st-ev { background: var(--surface2); border-radius: 14px; padding: 12px 14px; }
+.story .st-ev p { margin: 4px 0 6px; }
+.st-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.st-steps li { display: flex; gap: 10px; align-items: baseline; font-size: 14px; }
+.st-steps .sn { flex: none; width: 22px; height: 22px; border-radius: 8px; display: inline-grid; place-items: center; font-size: 12px; font-weight: 900; background: var(--surface); }
+.st-steps li.kr { color: var(--neg); }
+.st-steps li.kr .sn { background: var(--neg); color: #fff; }
+.story.empty { border-top: 1px solid var(--line); padding-top: 10px; }
+.st-steps li { display: block; position: relative; padding-left: 32px; line-height: 1.5; }
+.st-steps .sn { position: absolute; left: 0; top: 0; }

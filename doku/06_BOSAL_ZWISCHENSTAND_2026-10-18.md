@@ -104,3 +104,12 @@ Neue Datei `entwurf/fiplan.js` (`BoSalFI.run`), `js/logic.js` bleibt unveränder
 
 Mit den Beispieldaten: alte Rechnung frei 2042 (mit 45), korrigiert 2052 (mit 55).
 Hauptgründe: höherer Lebensbedarf (1), Fixkosten aus dem Monat (6), Haus-EK nicht mitgezählt (2).
+
+## Anschaffungen und Kredit (Entwurf 11)
+
+- Fehlt Geld für eine Anschaffung, wird der Rest ein **Kredit** (Annahme „Kreditzins“, Standard 6 %).
+  Solange er offen ist, **pausieren alle Spartöpfe** (ETF-Mindest, Kinder, Haus-EK, Notgroschen,
+  ETF-Rest) und ihr Geld tilgt den Kredit. Lebensqualität, Auto und KfW-Sondertilgung laufen weiter.
+- „So entwickeln sich die Töpfe“ trennt **Einzahlungen** (was jeder Topf bekommt, mit „Pause“)
+  von **Kontoständen** (Stand je Topf, Entnahmen rot). Darunter erklärt „Was bei den
+  Anschaffungen passiert“ jede Anschaffung Schritt für Schritt.
