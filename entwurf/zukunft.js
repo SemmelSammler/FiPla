@@ -21,9 +21,17 @@
     var mk = zu.src || c.state.active;
     var items = c.state.expected.filter(function (i) { return i.aktiv && i.typ !== "Schulden"; });
     if (!zu.pick) { zu.pick = {}; items.forEach(function (i) { zu.pick[i.id] = true; }); }
-    var ein = 0, fix = 0;
-    items.forEach(function (i) { if (!zu.pick[i.id]) return; var v = c.sollOf(mk, i); if (i.typ === "Einnahme") ein += v; else fix += -v; });
-    return { mk: mk, items: items, ein: Math.round(ein * 100) / 100, fix: Math.round(fix * 100) / 100 };
+    // Geteilte Kosten: Einnahmen „Anteil von anderen“ sind kein Gehalt, sie senken deine geteilten Fixkosten
+    items.forEach(function (i) {
+      if (i.typ === "Einnahme" && i.anteilVon == null) i.anteilVon = /anteil/i.test(i.beschreibung);
+      if (i.typ === "Fixkosten" && i.geteilt == null) i.geteilt = /miete|strom|internet|gas\b|wasser|nebenkosten|rundfunk/i.test(i.beschreibung);
+    });
+    var on = items.filter(function (i) { return zu.pick[i.id]; }), v = function (i) { return c.sollOf(mk, i); };
+    var sum = function (l) { return Math.round(l.reduce(function (s, i) { return s + Math.abs(v(i)); }, 0) * 100) / 100; };
+    var lohn = sum(on.filter(function (i) { return i.typ === "Einnahme" && !i.anteilVon; })), erst = sum(on.filter(function (i) { return i.typ === "Einnahme" && i.anteilVon; }));
+    var geteilt = sum(on.filter(function (i) { return i.typ === "Fixkosten" && i.geteilt; })), allein = sum(on.filter(function (i) { return i.typ === "Fixkosten" && !i.geteilt; }));
+    var r2 = function (x) { return Math.round(x * 100) / 100; };
+    return { mk: mk, items: items, ein: lohn, fix: r2(allein + geteilt - erst), erst: erst, geteilt: geteilt, allein: allein, meinGeteilt: r2(geteilt - erst) };
   }
   function inputs(c) {
     var a = c.state.fi; ensure(a);
@@ -69,11 +77,11 @@
     /* Schritt 1 */
     var s1 = step(1, "Was ist pro Monat frei?", "Im Jahr " + y.jahr + (y.monate < 12 ? " (noch " + y.monate + " Monate ab heute)" : ""),
       '<ul class="calc">' +
-      row("Einnahmen netto", y.einnahmen, y.jahr === first ? (a.ausMonat ? "aus dem Monat " + c.mLabel(monthValues(c, a).mk, true) : "von Hand eingetragen") : "+" + pct(a.wachstumEinnahmen) + " pro Jahr, höchstens " + eur0(Math.max(a.einnahmenDeckel, a.einnahmen))) +
-      row("Fixkosten", -y.fixkosten, y.jahr === first ? (a.ausMonat ? "aus dem Monat" : "von Hand eingetragen") : "+" + pct(a.wachstumFix) + " pro Jahr, höchstens " + eur0(Math.max(a.fixkostenDeckel, a.fixkosten))) +
+      row(a.ausMonat ? "Deine Einnahmen netto" : "Einnahmen netto", y.einnahmen, y.jahr === first ? (a.ausMonat ? "aus " + c.mLabel(monthValues(c, a).mk, true) + (monthValues(c, a).erst ? ", ohne Anteile von anderen" : "") : "von Hand eingetragen") : "+" + pct(a.wachstumEinnahmen) + " pro Jahr, höchstens " + eur0(Math.max(a.einnahmenDeckel, a.einnahmen))) +
+      row(a.ausMonat && monthValues(c, a).erst ? "Deine Fixkosten" : "Fixkosten", -y.fixkosten, y.jahr === first ? (a.ausMonat ? (monthValues(c, a).erst ? "dein Anteil: geteilte Kosten minus " + c.eur0(monthValues(c, a).erst) + " von anderen" : "aus dem Monat") : "von Hand eingetragen") : "+" + pct(a.wachstumFix) + " pro Jahr, höchstens " + eur0(Math.max(a.fixkostenDeckel, a.fixkosten))) +
       row("KfW-Pflichtraten", -(y.kfw1Pfl + y.kfw2Pfl), y.kfw1Pfl + y.kfw2Pfl ? "laut Tilgungsplan " + y.jahr : "Kredite sind abbezahlt") +
       '<li class="calc-total"><span>Frei pro Monat</span>' + money(y.frei) + "</li></ul>" +
-      '<p class="muted small">Anschaffungen stecken nicht hier drin. Sie werden im jeweiligen Monat voll vom Ersparten abgezogen (Schritt 3 und Karte „Anschaffungen“).</p>');
+      '<p class="muted small">Anschaffungen stecken nicht hier drin. Sie werden im jeweiligen Monat voll vom Ersparten abgezogen (Karte „Anschaffungen“ direkt unter Schritt 2).</p>');
 
     /* Schritt 2 */
     var PL = potsFor(years).filter(function (x) { return !x.p.kredit || y[x.p.got] > 0.5; });
@@ -114,8 +122,8 @@
       '<div class="z-legend small"><span><i style="background:var(--accent)"></i>so viel darfst du pro Jahr nehmen (4 %)</span><span><i style="background:var(--neg)"></i>so viel kosten deine laufenden Kosten pro Jahr</span></div>');
 
     return '<h1 class="page-t">Zukunft</h1><p class="lead muted">Die korrigierte Rechnung. Ganz unten steht, was gegenüber der alten Rechnung geändert ist.</p>' +
-      '<div class="z-top">' + hero + slider + "</div>" + '<div class="z-steps">' + s1 + s2 + "</div>" + standCard(c, a, years, y) + verlaufCard(c, a, years, r.fiJahr) +
-      '<div class="z-steps">' + s3 + s4 + "</div>" + annahmen(c, a, r) + events(c, a, r) + korrekturen(c, a, r, old);
+      '<div class="z-top">' + hero + slider + "</div>" + '<div class="z-steps">' + s1 + s2 + "</div>" + events(c, a, r) + standCard(c, a, years, y) + verlaufCard(c, a, years, r.fiJahr) +
+      '<div class="z-steps">' + s3 + s4 + "</div>" + annahmen(c, a, r) + korrekturen(c, a, r, old);
 
     function row(label, v, hint) { return "<li><span>" + label + (hint ? ' <em class="muted">' + esc(hint) + "</em>" : "") + "</span>" + money(v) + "</li>"; }
     function pct(v) { return c.fmt.format(v * 100).replace(/,00$/, "") + " %"; }
@@ -271,15 +279,31 @@
   }
 
   function fromMonth(c, a) {
-    var src = c.state.fi, mv = monthValues(c, a), months = c.months();
-    function list(typ) {
-      return mv.items.filter(function (i) { return i.typ === typ; }).map(function (i) {
-        return '<label class="fm-i"><input type="checkbox" data-act="zPick" data-id="' + i.id + '"' + (zu.pick[i.id] ? " checked" : "") + "> <span>" + c.esc(i.beschreibung) + '</span><span class="num muted">' + c.eur(c.sollOf(mv.mk, i)) + "</span></label>";
-      }).join("");
+    var src = c.state.fi, mv = monthValues(c, a), months = c.months(), eur = c.eur;
+    function line(i, tag) {
+      var val = Math.abs(c.sollOf(mv.mk, i));
+      return '<div class="fm-i' + (zu.pick[i.id] ? "" : " off") + '"><input type="checkbox" data-act="zPick" data-id="' + i.id + '"' + (zu.pick[i.id] ? " checked" : "") + ' aria-label="mitrechnen"> <span>' + c.esc(i.beschreibung) + "</span>" + (tag || "") + '<span class="num muted">' + eur(val) + "</span></div>";
     }
+    function sw(i, k, labelOn, labelOff) { return '<button class="fm-tag' + (i[k] ? " on" : "") + '" data-act="zTag" data-id="' + i.id + '" data-k="' + k + '" title="umschalten">' + (i[k] ? labelOn : labelOff) + "</button>"; }
+    var ein = mv.items.filter(function (i) { return i.typ === "Einnahme"; }), fix = mv.items.filter(function (i) { return i.typ === "Fixkosten"; });
+    var lohn = ein.filter(function (i) { return !i.anteilVon; }), erst = ein.filter(function (i) { return i.anteilVon; });
+    var geteilt = fix.filter(function (i) { return i.geteilt; }), allein = fix.filter(function (i) { return !i.geteilt; });
+    var pct = mv.geteilt ? Math.round(mv.meinGeteilt / mv.geteilt * 100) : 0;
+    var body = '<div class="fm-cols"><div><h4>Deine Einnahmen</h4>' + lohn.map(function (i) { return line(i, sw(i, "anteilVon", "Anteil von anderen", "mein Geld")); }).join("") +
+      '<div class="fm-sum"><span>Einnahmen netto</span>' + eur(mv.ein) + "</div>" +
+      (erst.length ? '<p class="muted small fm-hint">' + erst.map(function (i) { return "„" + c.esc(i.beschreibung) + "“"; }).join(", ") + " ist kein Einkommen, sondern ein Anteil an euren gemeinsamen Kosten. Es steht deshalb rechts bei den geteilten Kosten.</p>" : "") +
+      '</div><div><h4>Deine Fixkosten</h4>' +
+      (geteilt.length || erst.length ? '<div class="fm-grp"><div class="fm-grp-h">Geteilte Kosten</div>' + geteilt.map(function (i) { return line(i, sw(i, "geteilt", "geteilt", "nur ich")); }).join("") +
+        '<div class="fm-sub"><span>zusammen</span><span class="num">' + eur(mv.geteilt) + "</span></div>" +
+        erst.map(function (i) { return line(i, sw(i, "anteilVon", "Anteil von anderen", "mein Geld")).replace('<span class="num muted">', '<span class="num muted">− '); }).join("") +
+        '<div class="fm-sub fm-mine"><span>dein Anteil' + (pct ? " (" + pct + " %)" : "") + '</span><span class="num">' + eur(mv.meinGeteilt) + "</span></div></div>" : "") +
+      '<div class="fm-grp"><div class="fm-grp-h">Nur deine</div>' + allein.map(function (i) { return line(i, sw(i, "geteilt", "geteilt", "nur ich")); }).join("") +
+        '<div class="fm-sub"><span>zusammen</span><span class="num">' + eur(mv.allein) + "</span></div></div>" +
+      '<div class="fm-sum"><span>Fixkosten (dein Anteil)</span>' + eur(mv.fix) + "</div></div></div>" +
+      '<p class="muted small">Mit Häkchen wird der Posten mitgerechnet. Die kleinen Schalter sortieren um: „geteilt“ ↔ „nur ich“, „mein Geld“ ↔ „Anteil von anderen“. ' +
+      "Frei pro Monat bleibt gleich. Es ändert sich, was als Einkommen wächst und was dein Erspartes später bezahlen muss.</p>";
     return '<div class="fm-box"><div class="fm-head"><b>Einnahmen & Fixkosten</b><div class="seg seg-sm"><button class="seg-b' + (src.ausMonat ? " on" : "") + '" data-act="zAus" data-v="1">aus dem Monat</button><button class="seg-b' + (!src.ausMonat ? " on" : "") + '" data-act="zAus" data-v="0">von Hand</button></div></div>' +
-      (src.ausMonat ? '<div class="fm-b"><label class="fm-m"><span>Monat</span><select data-act="zSrc">' + months.map(function (m) { return '<option value="' + m + '"' + (m === mv.mk ? " selected" : "") + ">" + c.mLabel(m, true) + "</option>"; }).join("") + "</select></label>" +
-        '<div class="fm-cols"><div><h4>Einnahmen</h4>' + list("Einnahme") + '<div class="fm-sum">= ' + c.eur(mv.ein) + '</div></div><div><h4>Fixkosten</h4>' + list("Fixkosten") + '<div class="fm-sum">= ' + c.eur(mv.fix) + "</div></div></div>" +
+      (src.ausMonat ? '<div class="fm-b"><label class="fm-m"><span>Monat</span><select data-act="zSrc">' + months.map(function (m) { return '<option value="' + m + '"' + (m === mv.mk ? " selected" : "") + ">" + c.mLabel(m, true) + "</option>"; }).join("") + "</select></label>" + body +
         '<p class="muted small">Verknüpft: Änderst du im Monat einen festen Posten, ändert sich auch die Zukunft. Kredite rechnet die Zukunft über die Tilgungspläne.</p></div>'
         : '<p class="muted small fm-b">Du trägst Einnahmen und Fixkosten oben unter „Bearbeiten“ selbst ein.</p>') + "</div>";
   }
@@ -323,7 +347,7 @@
     return '<div class="card"><div class="card-head"><h2>Anschaffungen</h2><span class="muted small">Monat, Jahr, Kosten mit Minus, z. B. −20.000 für ein Auto</span></div>' +
       '<p class="muted small">Bezahlt wird im gewählten Monat, nachdem die Sparraten dieses Monats eingezahlt sind. Es gibt nur <b>ein</b> ETF-Depot: Die Töpfe 1 (ETF-Mindestbetrag) und 8 (ETF-Rest) zahlen beide dort ein. Wird der Notgroschen angezapft, füllt er sich in den Monaten danach wieder auf.</p>' +
       '<ul class="ev-cards">' + withAmt.map(card).join("") + "</ul>" +
-      (without.length ? '<details class="ev-empty"' + (zu.evEmptyOpen ? " open" : "") + '><summary>' + without.length + " Anschaffungen ohne Betrag (zählen nicht)</summary><ul class=\"ev-cards\">" + without.map(function (x) { return '<li class="ev-card">' + inputsRow(x) + "</li>"; }).join("") + "</ul></details>" : "") +
+      (without.length ? '<details class="ev-empty" data-pp="evEmpty"' + (zu.open.evEmpty ? " open" : "") + '><summary>' + without.length + " Anschaffungen ohne Betrag (zählen nicht)</summary><ul class=\"ev-cards\">" + without.map(function (x) { return '<li class="ev-card">' + inputsRow(x) + "</li>"; }).join("") + "</ul></details>" : "") +
       c.btn("＋ Anschaffung", "zEvAdd", "", "btn-sm") + "</div>";
   }
 
@@ -410,6 +434,7 @@
     if (act === "zVl") { zu.vlStart = +d.s; return true; }
     if (act === "zVlInhalt") { zu.vlInhalt = d.m; return true; }
     if (act === "zAus") { c.mark("Quelle für Startwerte geändert"); if (d.v === "0" && a.ausMonat) { var mv = monthValues(c, a); a.einnahmen = mv.ein; a.fixkosten = mv.fix; } a.ausMonat = d.v === "1"; return true; }
+    if (act === "zTag") { var it = c.state.expected.find(function (x) { return x.id === d.id; }); c.mark("Posten umsortiert"); it[d.k] = !it[d.k]; return true; }
     if (act === "zEvAdd") { c.mark("Anschaffung hinzugefügt"); (a.events = a.events || []).push({ jahr: new Date().getFullYear() + 1, monat: 1, beschreibung: "Neue Anschaffung", betrag: -1000 }); return true; }
     if (act === "zEvDel") { c.mark("Anschaffung gelöscht"); a.events.splice(+d.i, 1); return true; }
     return false;

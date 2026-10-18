@@ -113,3 +113,15 @@ Hauptgründe: höherer Lebensbedarf (1), Fixkosten aus dem Monat (6), Haus-EK ni
 - „So entwickeln sich die Töpfe“ trennt **Einzahlungen** (was jeder Topf bekommt, mit „Pause“)
   von **Kontoständen** (Stand je Topf, Entnahmen rot). Darunter erklärt „Was bei den
   Anschaffungen passiert“ jede Anschaffung Schritt für Schritt.
+
+## Dein Anteil und Reihenfolge (Entwurf 12)
+
+- **KfW-Sondertilgung** läuft auch während eines Kredits weiter (Entscheidung des Nutzers).
+- **Annahmen „aus dem Monat“** rechnen mit deinem Anteil: Einnahmen mit dem Schalter „Anteil von
+  anderen“ (z. B. Mietanteil Laura) zählen nicht als Einkommen, sondern senken die als „geteilt“
+  markierten Fixkosten (Miete, Strom, Internet). Frei pro Monat bleibt gleich; es ändert sich, was
+  als Einkommen wächst und was das Ersparte später bezahlen muss (FI-Bedarf).
+- Nicht mehr aktuelle Posten (Baloise BU, Fitness, PS Plus, Nintendo Online) sind im Entwurf entfernt.
+- Karte „Anschaffungen“ steht direkt unter Schritt 1 und 2.
+- Behoben: Das Monats-Auswahlfeld einer Anschaffung schloss sich sofort wieder, wenn vorher ein
+  anderes Feld geändert wurde (die Seite wurde neu gezeichnet, während das Auswahlfeld aufging).

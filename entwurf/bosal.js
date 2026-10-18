@@ -25,6 +25,8 @@
     frozen: {},                        // abgeschlossene Monate: { mk: Endstand }
     demoImported: false
   };
+  // Nicht mehr aktuelle Posten (laut Nutzer): Baloise BU, Fitness, PS Plus, Nintendo Online
+  state.expected = state.expected.filter(function (i) { return ["exp-08", "exp-09", "exp-14", "exp-16"].indexOf(i.id) === -1; });
   L.enrichAll(state);
   // Abgeschlossene Monate (im echten Tool: dein letzter Übrig-Wert beim Abschluss)
   L.monthRange(state.transactions.reduce(function (m, t) { return t.effMonat < m ? t.effMonat : m; }, CUR), L.prevMonth(CUR))
@@ -613,7 +615,7 @@
     var el = e.target;
     if (el.dataset.act === "customColor") { ui.custom = el.value; ui.palette = "eigene"; try { localStorage.setItem("bosal.custom", el.value); localStorage.setItem("bosal.palette", "eigene"); } catch (er) {} render(); return; }
     if (el.dataset.act === "zYear") return;
-    if (window.BoSalZukunft && window.BoSalZukunft.change(zctx(), el)) { render(); return; }
+    if (window.BoSalZukunft && window.BoSalZukunft.change(zctx(), el)) { renderAfterChange(el); return; }
     if (el.dataset.act === "inclFix") { ui.inclFix = el.checked; render(); return; }
     if (el.dataset.act === "ovr") {
       var it = state.expected.find(function (x) { return x.id === el.dataset.id; }), n = parseNum(el.value);
@@ -630,6 +632,17 @@
       render();
     }
   });
+  // Nach einer Eingabe neu zeichnen, ohne das Feld zu zerstören, in das gerade geklickt wurde:
+  // Ein Auswahlfeld (z. B. Monat) würde sonst beim Öffnen sofort wieder zugehen.
+  function renderAfterChange(el) {
+    setTimeout(function () {
+      var ae = document.activeElement, inApp = ae && ae !== el && ae.closest && ae.closest("#app");
+      if (inApp && ae.tagName === "SELECT") { ae.addEventListener("blur", render, { once: true }); return; }
+      var key = inApp && ae.matches("input,textarea") && ae.dataset.act ? '[data-act="' + ae.dataset.act + '"]' + ["i", "f", "k", "id", "m"].map(function (k) { return ae.dataset[k] != null ? "[data-" + k + '="' + ae.dataset[k] + '"]' : ""; }).join("") : null;
+      render();
+      var n = key && document.querySelector(key); if (n) n.focus();
+    }, 0);
+  }
   document.addEventListener("keydown", function (e) {
     if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z" || e.target.matches("input,textarea")) return;
     e.preventDefault(); if (e.shiftKey) redo(); else undo();
