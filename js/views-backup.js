@@ -51,7 +51,7 @@
 
     /* ---- Darstellung & Verhalten ---- */
     var prefs = state.ui.prefs;
-    var VIEW_LABELS = [["dashboard", "Dashboard"], ["monat", "Monat"], ["import", "CSV-Import"], ["posten", "Posten & Kategorien"], ["fi", "FI-Planung"], ["hauskauf", "Hauskauf"], ["hochzeit", "Hochzeit"], ["kinder", "Kinder"], ["backup", "Backup & Einstellungen"]];
+    var VIEW_LABELS = [["dashboard", "Dashboard"], ["monat", "Monat"], ["import", "CSV-Import"], ["posten", "Posten & Kategorien"], ["fi", "FI-Planung"], ["hauskauf", "Hauskauf"], ["kinder", "Kinder"], ["backup", "Backup & Einstellungen"]];
     host.appendChild(el("section", { class: "card" },
       el("h2", { class: "card-title" }, "Darstellung & Verhalten"),
       el("div", { class: "fields" },

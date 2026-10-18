@@ -13,7 +13,6 @@ var UI = (function () {
     { group: "Planung" },
     { id: "fi", label: "FI-Planung", ico: "⤒" },
     { id: "hauskauf", label: "Hauskauf", ico: "⌂" },
-    { id: "hochzeit", label: "Hochzeit", ico: "❤" },
     { id: "kinder", label: "Kinder", ico: "☺" },
     { group: "System" },
     { id: "backup", label: "Backup & Einstellungen", ico: "⛃" }

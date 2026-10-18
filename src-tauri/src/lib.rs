@@ -294,15 +294,14 @@ async fn pick_backup(app: tauri::AppHandle) -> Result<Option<String>, String> {
   }
 }
 
-/// Die 9 Sidebar-Bereiche in Sidebar-Reihenfolge (⌘1–⌘9), IDs wie in ui-core.js
-const VIEWS: [(&str, &str); 9] = [
+/// Die 8 Sidebar-Bereiche in Sidebar-Reihenfolge (⌘1–⌘8), IDs wie in ui-core.js
+const VIEWS: [(&str, &str); 8] = [
   ("dashboard", "Dashboard"),
   ("monat", "Monat"),
   ("import", "CSV-Import"),
   ("posten", "Posten & Kategorien"),
   ("fi", "FI-Planung"),
   ("hauskauf", "Hauskauf"),
-  ("hochzeit", "Hochzeit"),
   ("kinder", "Kinder"),
   ("backup", "Backup & Einstellungen"),
 ];

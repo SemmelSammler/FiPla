@@ -38,7 +38,7 @@ ok(!!win.Store && !!win.UI, "App-Module geladen");
 let state = win.Store.get();
 ok(state.transactions.length === 188, "188 Seed-Buchungen beim Erststart", state.transactions.length);
 ok(state.expected.length === 18, "18 erwartete Posten");
-ok(doc.querySelectorAll(".nav button").length === 9, "9 Navigationspunkte", doc.querySelectorAll(".nav button").length);
+ok(doc.querySelectorAll(".nav button").length === 8, "8 Navigationspunkte", doc.querySelectorAll(".nav button").length);
 ok(doc.querySelector(".page-title").textContent === "Dashboard", "Dashboard ist Startansicht");
 ok(doc.querySelectorAll(".chart-line").length >= 2, "Verlauf- und Kategorie-Trend-Chart im Dashboard gerendert (beide jetzt multiLine)");
 ok(doc.body.textContent.includes("2042"), "FI-Jahr 2042 auf dem Dashboard sichtbar");
@@ -46,7 +46,7 @@ const persisted = win.localStorage.getItem("finanzplanung.v1");
 ok(!!persisted || true, "persist ist debounced — wird unten nach Wartezeit geprüft");
 
 console.log("\n== B) Alle Ansichten rendern ohne Fehler ==");
-for (const v of ["monat", "import", "posten", "fi", "hauskauf", "hochzeit", "kinder", "backup", "dashboard"]) {
+for (const v of ["monat", "import", "posten", "fi", "hauskauf", "kinder", "backup", "dashboard"]) {
   errs.length = 0;
   win.UI.go(v);
   ok(errs.length === 0 && doc.querySelector("#view").children.length > 0, "Ansicht \u201E" + v + "\u201C rendert", errs.join(" | "));
@@ -171,10 +171,6 @@ txt = doc.querySelector("#view").textContent;
 ok(txt.includes("3.097,68"), "Hauskauf: Monatsrate 3.097,68 € sichtbar");
 ok(txt.includes("129.070"), "Hauskauf: Ziel-EK 129.070 € sichtbar");
 ok(txt.includes("2037"), "Hauskauf: frühestes Kaufjahr 2037 sichtbar");
-win.UI.go("hochzeit");
-txt = doc.querySelector("#view").textContent;
-ok(txt.includes("-32,51") || txt.includes("−32,51"), "Hochzeit: \u201EWas bleibt übrig?\u201C −32,51 € sichtbar");
-ok(txt.includes("3.709,51"), "Hochzeit: mein Anteil 3.709,51 € sichtbar");
 win.UI.go("kinder");
 txt = doc.querySelector("#view").textContent;
 ok(txt.includes("76.500"), "Kinder: 76.500 € pro Kind sichtbar");
@@ -616,22 +612,6 @@ console.log("\n== O) Neu: Feld-Typen, Was-wäre-wenn, Urlaub abhaken, Rücklagen
   // Sensitivität stimmt: Sparrate 2000 → früheres Kaufjahr als bei 1000
   const kjBei = (sp) => { const hh = JSON.parse(JSON.stringify(w5.Store.get().hauskauf)); hh.ekSparrate = sp; return w5.Logic.runHauskauf(hh).kaufjahr; };
   ok(kjBei(2000) < kjBei(1000), "höhere Sparrate → früheres Kaufjahr (" + kjBei(2000) + " < " + kjBei(1000) + ")");
-
-  // --- Hochzeit: Positionen abhaken ---
-  w5.UI.go("hochzeit");
-  let ht = d5.querySelector("#view").textContent;
-  ok(ht.includes("2.323,00"), "Noch zu zahlen = 2.323,00 (Flug + Auto bereits abgehakt)");
-  ok(ht.includes("-32,51") || ht.includes("−32,51"), "Budget-Rest weiterhin −32,51 (Referenz hält)");
-  const hotelRow = [...d5.querySelectorAll("#view tr")].find(tr => [...tr.querySelectorAll("input")].some(i => i.value === "Hotels"));
-  const chk5 = hotelRow.querySelector("input[type=checkbox]");
-  chk5.checked = true;
-  chk5.dispatchEvent(new w5.Event("change", { bubbles: true }));
-  const wRes = w5.Logic.runHochzeit(w5.Store.get().hochzeit);
-  ok(Math.abs(wRes.urlaubOffen - 1100) < 0.01, "Hotels abgehakt → noch zu zahlen 1.100,00", wRes.urlaubOffen);
-  ok(Math.abs(wRes.rest - (6000 - wRes.anteil - 1100)) < 0.01, "Budget-Rest rechnet mit dem neuen offenen Betrag");
-  ok(Math.abs(wRes.urlaubTotal - 2678.62) < 0.02, "TOTAL bleibt unverändert (nur \u201Eoffen\u201C ändert sich)");
-  const hotelChk2 = [...d5.querySelectorAll("#view tr")].find(tr => [...tr.querySelectorAll("input")].some(i => i.value === "Hotels")).querySelector("input[type=checkbox]");
-  hotelChk2.checked = false; hotelChk2.dispatchEvent(new w5.Event("change", { bubbles: true }));
 
   // --- Dashboard: Rücklagen-Schnelleintrag ---
   w5.UI.go("dashboard");

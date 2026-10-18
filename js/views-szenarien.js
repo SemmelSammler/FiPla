@@ -1,4 +1,4 @@
-/* views-szenarien.js — Hauskauf, Hochzeit, Kinder */
+/* views-szenarien.js — Hauskauf, Kinder */
 "use strict";
 (function () {
   var el = U.el, td = UI.td;
@@ -217,108 +217,6 @@
         el("button", {
           class: "btn sm", onclick: function () {
             h.nebenkosten.push({ name: "Neue Position", betrag: 0, hint: "💡" });
-            Store.commit(); UI.render();
-          }
-        }, "＋ Position")));
-    }));
-  });
-
-  /* =================== HOCHZEIT =================== */
-  UI.registerView("hochzeit", function (host, state) {
-    var w = state.hochzeit;
-    var r = Logic.runHochzeit(w);
-    host.appendChild(UI.pageHead("Hochzeit-Planer", "Kosten, Flitterwochen und Budget", [UI.printButton()]));
-
-    // Kopfzeile
-    var datum = el("input", { type: "date", value: w.datum || "" });
-    datum.addEventListener("change", function () { w.datum = datum.value; Store.commit(); });
-    host.appendChild(el("section", { class: "card" },
-      el("div", { class: "fields" },
-        UI.field("Datum", datum),
-        UI.field("Personen", UI.numInput({ value: w.personen, plain: true, onchange: function (v) { w.personen = Math.round(v); Store.commit(); UI.render(); } })),
-        UI.field("Caterer", UI.textInput(w.caterer, function (v) { w.caterer = v; Store.commit(); })))));
-
-    // Budget-Übersicht
-    var restCls = r.rest < 0 ? "neg" : "pos";
-    host.appendChild(el("section", { class: "card" },
-      el("h2", { class: "card-title" }, "Budget-Übersicht"),
-      el("div", { class: "grid kpi" },
-        el("div", { class: "kpi-card" }, el("div", { class: "eyebrow" }, "Gespart (Budget)"),
-          UI.numInput({ value: w.budget, onchange: function (v) { w.budget = v; Store.commit(); UI.render(); } })),
-        UI.kpi("− Kosten Hochzeit (mein Anteil)", UI.money(-r.anteil), "Brutto / 2 bei 50/50-Teilung"),
-        UI.kpi("− Urlaub noch zu zahlen", UI.money(-r.urlaubOffen), "berechnet: alle nicht abgehakten Urlaubs-Positionen"),
-        UI.kpi("= Was bleibt übrig?", el("span", { class: restCls }, U.eur(r.rest)), r.rest < 0 ? "Budget überschritten" : "im Budget", restCls)),
-      r.rest < 0 ? el("div", { class: "callout warn", style: "margin-top:12px" }, "⚠️ Das gesparte Budget reicht aktuell nicht — Differenz: ", el("strong", { class: "num" }, U.eur(r.rest))) : null));
-
-    // Kosten-Tabelle
-    function statusSel(it) {
-      var opts = ["Angebot vorhanden", "Zu bestellen", "Bestellt", "Bezahlt"];
-      var sel = el("select", {}, opts.map(function (o) { return el("option", { value: o, selected: it.status === o }, o); }));
-      if (opts.indexOf(it.status) === -1) sel.appendChild(el("option", { value: it.status, selected: true }, it.status));
-      sel.addEventListener("change", function () { it.status = sel.value; Store.commit(); });
-      return sel;
-    }
-    var rows = w.items.map(function (it) {
-      var brutto = Logic.hochzeitBrutto(it);
-      return el("tr", {},
-        td([el("div", { class: "cell-main" }, it.icon + " " + it.bereich),
-        el("div", { class: "cell-sub" }, "")]),
-        td(UI.textInput(it.beschreibung, function (v) { it.beschreibung = v; Store.commit(); }, { style: "min-width:160px" })),
-        td(statusSel(it)),
-        td(UI.numInput({ value: it.netto, allowEmpty: true, onchange: function (v) { it.netto = v; Store.commit(); UI.render(); } }), "r"),
-        td(el("div", { style: "display:flex;flex-direction:column;gap:2px;align-items:flex-end" },
-          UI.numInput({ value: it.brutto, allowEmpty: true, onchange: function (v) { it.brutto = v; Store.commit(); UI.render(); } }),
-          it.brutto == null || it.brutto === "" ? el("span", { class: "small muted num" }, "auto: " + U.eur(brutto)) : null), "r"),
-        td(UI.textInput(it.notiz, function (v) { it.notiz = v; Store.commit(); }, { style: "min-width:120px" })),
-        td(el("button", {
-          class: "btn sm danger", "aria-label": "Kosten-Position \u201E" + (it.bereich || "ohne Bereich") + "\u201C löschen", onclick: function () {
-            w.items = w.items.filter(function (x) { return x !== it; });
-            Store.commit(); UI.render();
-          }
-        }, "✕"), "r"));
-    });
-    host.appendChild(UI.collapsibleCard({ key: "hz.kosten", title: "Kosten", hint: "Brutto leer lassen → automatisch Netto × 1,19 (19 % MwSt.)", defaultOpen: true }, function (body) {
-      body.appendChild(el("div", { class: "scroll-y", style: "max-height:560px" },
-        UI.table(["Bereich", "Beschreibung", "Status", { label: "Netto €", r: 1 }, { label: "Brutto €", r: 1 }, "Notiz", { label: "", r: 1 }], rows,
-          el("tr", {}, td("GESAMT"), td(""), td(""),
-            td(UI.money(r.netto, { neutral: true }), "r num"),
-            td(UI.money(r.brutto, { neutral: true }), "r num"),
-            td(el("span", { class: "num" }, "Anteil (÷2): " + U.eur(r.anteil))), td("")))));
-      body.appendChild(el("div", { class: "btn-row", style: "margin-top:10px" },
-        el("button", {
-          class: "btn primary sm", onclick: function () {
-            w.items.push({ id: U.uid("w"), icon: "📌", bereich: "Neue Position", beschreibung: "", status: "Zu bestellen", netto: null, brutto: 0, notiz: "" });
-            Store.commit(); UI.render();
-          }
-        }, "＋ Position")));
-    }));
-
-    // Flitterwochen
-    var uRows = w.urlaub.map(function (u) {
-      var chk = el("input", { type: "checkbox", checked: !!u.bezahlt, title: "abhaken = bezahlt → zählt nicht mehr zu \u201ENoch zu zahlen\u201C" });
-      chk.addEventListener("change", function () { u.bezahlt = chk.checked; Store.commit(); UI.render(); });
-      return el("tr", { style: u.bezahlt ? "opacity:.62" : "" },
-        td(el("div", { style: "display:flex;align-items:center;gap:9px" }, chk,
-          u.bezahlt ? el("span", { class: "badge ok" }, "bezahlt") : el("span", { class: "badge offen" }, "offen"))),
-        td(UI.textInput(u.name, function (v) { u.name = v; Store.commit(); })),
-        td(UI.numInput({ value: u.betrag, onchange: function (v) { u.betrag = v; Store.commit(); UI.render(); } }), "r"),
-        td(el("button", {
-          class: "btn sm danger", "aria-label": "Urlaubsposition \u201E" + (u.name || "ohne Namen") + "\u201C löschen", onclick: function () {
-            w.urlaub = w.urlaub.filter(function (x) { return x !== u; });
-            Store.commit(); UI.render();
-          }
-        }, "✕"), "r"));
-    });
-    host.appendChild(UI.collapsibleCard({ key: "hz.urlaub", title: "✈️ Flitterwochen / Urlaub", hint: "Total: " + U.eur(r.urlaubTotal) + " · noch zu zahlen: " + U.eur(r.urlaubOffen), defaultOpen: true }, function (body) {
-      body.appendChild(el("div", { style: "margin-bottom:10px;max-width:240px" },
-        UI.field("Reiseziel", UI.textInput(w.urlaubZiel, function (v) { w.urlaubZiel = v; Store.commit(); }))));
-      body.appendChild(UI.table(["Status", "Position", { label: "Kosten €", r: 1 }, { label: "", r: 1 }], uRows,
-        [el("tr", {}, td("TOTAL"), td(""), td(UI.money(-r.urlaubTotal), "r num"), td("")),
-        el("tr", {}, td(el("strong", {}, "Noch zu zahlen")), td(el("span", { class: "small muted" }, "fließt oben ins Budget")), td(el("span", { class: "num warncol", style: "font-weight:700" }, U.eur(r.urlaubOffen)), "r"), td(""))]));
-      body.appendChild(el("div", { class: "btn-row", style: "margin-top:10px" },
-        el("button", {
-          class: "btn sm", onclick: function () {
-            w.urlaub.push({ id: U.uid("u"), icon: "•", name: "Neue Position", betrag: 0, bezahlt: false });
             Store.commit(); UI.render();
           }
         }, "＋ Position")));
