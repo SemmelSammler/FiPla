@@ -94,7 +94,7 @@ Neue Datei `entwurf/fiplan.js` (`BoSalFI.run`), `js/logic.js` bleibt unveränder
 
 1. FI-Test misst den Lebensbedarf: Fixkosten + wählbar Lebensqualität und Auto
 2. Haus-EK zählt nicht zum FI-Kapital, optional mit Kaufjahr
-3. Lebensereignisse voll verrechnet (ETF → Notgroschen → Haus-EK → Fehlbetrag), nicht mehr ÷ 12
+3. Anschaffungen (früher „Lebensereignisse“) voll verrechnet, im gewählten Monat, Standard Notgroschen → ETF → Haus-EK, Rest als Fehlbetrag. Rechnung läuft dafür in Monatsschritten
 4. Kinder-Sparen ist ein eigener Spartopf, Auto bleibt Ausgabe
 5. Hinweis auf fehlende Startbestände, neues Feld „Kinder-Sparen heute“
 6. Einnahmen und Fixkosten standardmäßig live aus einem Monat (abhakbar), „von Hand“ möglich

@@ -30,14 +30,14 @@
   }
 
   var POTS = [
-    { name: "ETF-Mindestbetrag", art: "gespart", got: "allocEtfMin", will: function (a) { return a.etfMindest; } },
-    { name: "Lebensqualität", art: "ausgegeben", got: "allocLebensqual", will: function (a) { return a.lebensqualitaet; } },
-    { name: "KfW-Sondertilgung", art: "getilgt", got: "allocSonder", will: function (a) { return a.kfw1Sonder; } },
-    { name: "Auto", art: "ausgegeben", got: "allocAuto", will: function (a) { return a.autoPauschale; } },
-    { name: "Kinder-Sparen", art: "gespart", got: "allocKind", will: function (a) { return a.kindSparrate; }, stock: "kind" },
-    { name: "Haus-Eigenkapital", art: "gespart", got: "allocHausEk", will: function (a) { return a.hausEkRate; }, stock: "hausEk", ziel: "hausEkZiel" },
-    { name: "Notgroschen", art: "gespart", got: "allocNotgroschen", will: function (a) { return a.notgroschenRate; }, stock: "notgroschen", ziel: "notgroschenZiel" },
-    { name: "ETF: der ganze Rest", art: "gespart", got: "allocEtfRest", will: null, stock: "etf" }
+    { name: "ETF-Mindestbetrag", art: "gespart", got: "allocEtfMin", sk: "etfMin", will: function (a) { return a.etfMindest; } },
+    { name: "Lebensqualität", art: "ausgegeben", got: "allocLebensqual", sk: "lebensqual", will: function (a) { return a.lebensqualitaet; } },
+    { name: "KfW-Sondertilgung", art: "getilgt", got: "allocSonder", sk: "sonder", will: function (a) { return a.kfw1Sonder; } },
+    { name: "Auto", art: "ausgegeben", got: "allocAuto", sk: "auto", will: function (a) { return a.autoPauschale; } },
+    { name: "Kinder-Sparen", art: "gespart", got: "allocKind", sk: "kind", wk: "kind", will: function (a) { return a.kindSparrate; }, stock: "kind" },
+    { name: "Haus-Eigenkapital", art: "gespart", got: "allocHausEk", sk: "hausEk", wk: "hek", will: function (a) { return a.hausEkRate; }, stock: "hausEk", ziel: "hausEkZiel" },
+    { name: "Notgroschen", art: "gespart", got: "allocNotgroschen", sk: "notgroschen", wk: "ng", will: function (a) { return a.notgroschenRate; }, stock: "notgroschen", ziel: "notgroschenZiel" },
+    { name: "ETF: der ganze Rest", art: "gespart", got: "allocEtfRest", sk: "etfRest", wk: "etf", will: null, stock: "etf" }
   ];
 
   function render(c) {
@@ -63,7 +63,7 @@
       row("Fixkosten", -y.fixkosten, y.jahr === first ? (a.ausMonat ? "aus dem Monat" : "von Hand eingetragen") : "+" + pct(a.wachstumFix) + " pro Jahr, höchstens " + eur0(Math.max(a.fixkostenDeckel, a.fixkosten))) +
       row("KfW-Pflichtraten", -(y.kfw1Pfl + y.kfw2Pfl), y.kfw1Pfl + y.kfw2Pfl ? "laut Tilgungsplan " + y.jahr : "Kredite sind abbezahlt") +
       '<li class="calc-total"><span>Frei pro Monat</span>' + money(y.frei) + "</li></ul>" +
-      '<p class="muted small">Lebensereignisse stecken nicht mehr hier drin. Sie werden in Schritt 3 voll vom Ersparten abgezogen.</p>');
+      '<p class="muted small">Anschaffungen stecken nicht hier drin. Sie werden im jeweiligen Monat voll vom Ersparten abgezogen (Schritt 3 und Karte „Anschaffungen“).</p>');
 
     /* Schritt 2 */
     var maxW = POTS.reduce(function (m, p) { return Math.max(m, p.will ? p.will(a) : y[p.got]); }, 1);
@@ -84,7 +84,7 @@
     var s3 = step(3, "Wie wächst dein Vermögen?", "Bestände am Ende jedes Jahres",
       stackChart(years, zu.year, r.fiJahr) +
       '<div class="z-legend small"><span><i style="background:var(--c-etf)"></i>ETF (+' + pct(a.etfRendite) + ')</span><span><i style="background:var(--c-hek)"></i>Haus-EK</span><span><i style="background:var(--c-kind)"></i>Kinder-Sparen</span><span><i style="background:var(--c-ng)"></i>Notgroschen</span><span><i style="background:var(--c-kfw)"></i>KfW-Schulden</span></div>' +
-      '<ul class="calc">' + (ev ? row("Lebensereignisse " + y.jahr, ev, evTxt) : "") + row("Für die Freiheit (Notgroschen + ETF)", y.fiCap) + row("Zweckgebunden (Haus-EK + Kinder-Sparen)", y.hausEk + y.kind) + row("KfW-Schulden", y.kfw1 + y.kfw2) +
+      '<ul class="calc">' + (ev ? row("Anschaffungen " + y.jahr, ev, evTxt) : "") + row("Für die Freiheit (Notgroschen + ETF)", y.fiCap) + row("Zweckgebunden (Haus-EK + Kinder-Sparen)", y.hausEk + y.kind) + row("KfW-Schulden", y.kfw1 + y.kfw2) +
       '<li class="calc-total"><span>Vermögen Ende ' + y.jahr + "</span>" + money(y.vermoegen) + "</li></ul>");
 
     /* Schritt 4 */
@@ -113,41 +113,50 @@
     return '<section class="card z-step"><div class="z-step-h"><span class="z-n">' + n + '</span><div><h2>' + title + '</h2><p class="muted small">' + sub + "</p></div></div>" + body + "</section>";
   }
 
-  /* ---------- Alle Töpfe Ende Jahr ---------- */
+  /* ---------- Alle Töpfe Ende Jahr (mit Entnahmen für Anschaffungen) ---------- */
   function standCard(c, a, years, y) {
     var eur0 = c.eur0, upto = years.filter(function (x) { return x.jahr <= y.jahr; });
-    function sum(k) { return upto.reduce(function (s, x) { return s + x[k] * x.monate; }, 0); }
+    function sum(k) { return upto.reduce(function (s, x) { return s + x.sums[k]; }, 0); }
+    function wdSum(k) { return upto.reduce(function (s, x) { return s + x.wd[k]; }, 0); }
     function bar(v, max) { return '<div class="st-bar"><span style="width:' + Math.max(0, Math.min(100, v / (max || 1) * 100)).toFixed(1) + '%"></span></div>'; }
     var kfwStart = Math.abs(a.kfw1Rest || 0) + Math.abs(a.kfw2Rest || 0), kfwNow = Math.max(0, -(y.kfw1 + y.kfw2)) || 0;
     var verb = { gespart: "eingezahlt", ausgegeben: "ausgegeben", getilgt: "zusätzlich getilgt" };
-    return '<div class="card z-stand"><div class="card-head"><h2>Alle Töpfe Ende ' + y.jahr + '</h2><span class="muted small">Jahr oben ändern</span></div><div class="vt-wrap"><table class="st-tbl"><thead><tr><th></th><th>Topf</th><th class="r">pro Monat ' + y.jahr + '</th><th class="r">bis Ende ' + y.jahr + ' insgesamt</th><th>Stand / Ziel</th></tr></thead><tbody>' + POTS.map(function (p, i) {
+    var rows = POTS.map(function (p, i) {
       var goal = "";
       if (p.got === "allocSonder") goal = "<span>Restschuld KfW " + eur0(kfwNow) + " von " + eur0(kfwStart) + "</span>" + bar(kfwStart - kfwNow, kfwStart);
       else if (p.ziel) goal = "<span>" + eur0(y[p.stock]) + " von " + eur0(a[p.ziel]) + "</span>" + bar(y[p.stock], a[p.ziel]);
-      else if (p.stock === "etf") goal = "<span>ETF gesamt " + eur0(y.etf) + " (mit Rendite)</span>";
+      else if (p.stock === "etf") goal = "<span>ETF-Depot gesamt " + eur0(y.etf) + " (Töpfe 1 + 8, mit Rendite)</span>";
       else if (p.stock) goal = "<span>Stand " + eur0(y[p.stock]) + "</span>";
-      return '<tr class="art-' + p.art + '"><td><span class="pot-n">' + (i + 1) + '</span></td><td><b>' + p.name + '</b> <span class="pot-tag">' + p.art + '</span></td><td class="r num">' + eur0(y[p.got]) + '</td><td class="r"><span class="num">' + eur0(sum(p.got)) + '</span> <em class="muted small">' + verb[p.art] + '</em></td><td class="st-goal">' + (goal || '<span class="muted small">–</span>') + "</td></tr>";
-    }).join("") + "</tbody></table></div></div>";
+      var w = p.wk ? y.wd[p.wk] : 0, wAll = p.wk ? wdSum(p.wk) : 0;
+      var wTxt = p.wk ? (wAll > 0.5 ? '<span class="num neg">−' + eur0(wAll) + "</span>" + (w > 0.5 ? '<em class="muted small">davon ' + y.jahr + ": −" + eur0(w) + "</em>" : "") : '<span class="muted">–</span>') : '<span class="muted small">' + (p.stock === undefined && p.got === "allocEtfMin" ? "→ Zeile 8" : "") + "</span>";
+      return '<tr class="art-' + p.art + '"><td><span class="pot-n">' + (i + 1) + '</span></td><td><b>' + p.name + '</b> <span class="pot-tag">' + p.art + '</span></td><td class="r num">' + eur0(y[p.got]) + '</td><td class="r"><span class="num">' + eur0(sum(p.sk)) + '</span> <em class="muted small">' + verb[p.art] + '</em></td><td class="r st-wd">' + wTxt + '</td><td class="st-goal">' + (goal || '<span class="muted small">–</span>') + "</td></tr>";
+    }).join("");
+    var cost = -upto.reduce(function (s, x) { return s + Math.min(0, x.events); }, 0), costY = -Math.min(0, y.events), fehl = wdSum("fehl");
+    var evRow = '<tr class="st-ev"><td><span class="pot-n">€</span></td><td><b>Anschaffungen</b></td><td class="r num">' + (costY ? "−" + eur0(costY) + '<em class="muted small">im Jahr</em>' : "–") + '</td><td class="r"><span class="num">' + (cost ? "−" + eur0(cost) : "–") + '</span> <em class="muted small">bezahlt</em></td><td class="r st-wd">' + (fehl > 0.5 ? '<span class="num neg">' + eur0(fehl) + '</span><em class="muted small">davon geliehen (Fehlbetrag)</em>' : "") + '</td><td class="st-goal muted small">bezahlt aus den Töpfen in der Spalte „für Anschaffungen entnommen“</td></tr>';
+    return '<div class="card z-stand"><div class="card-head"><h2>Alle Töpfe Ende ' + y.jahr + '</h2><span class="muted small">Jahr oben ändern</span></div><div class="vt-wrap"><table class="st-tbl"><thead><tr><th></th><th>Topf</th><th class="r">pro Monat ' + y.jahr + '</th><th class="r">bis Ende ' + y.jahr + ' insgesamt</th><th class="r">für Anschaffungen entnommen</th><th>Stand / Ziel</th></tr></thead><tbody>' + rows + evRow + "</tbody></table></div>" +
+      '<p class="muted small">„pro Monat“ ist der Durchschnitt des Jahres. Der ETF-Mindestbetrag (1) und der ETF-Rest (8) liegen im selben ETF-Depot, Entnahmen stehen deshalb bei Zeile 8.</p></div>';
   }
 
   /* ---------- Töpfe als Tabelle: Jahre oder Monate ---------- */
   function verlaufCard(c, a, years, fiJ) {
-    var eur0 = c.eur0, mode = zu.vlMode, cols, head, cell, nav, note;
+    var eur0 = c.eur0, mode = zu.vlMode, cols, head, cell, evCell, nav, note;
     if (mode === "jahr") {
       var first = years[0].jahr, last = years[years.length - 1].jahr, start = zu.vlStart != null ? zu.vlStart : zu.year - ((zu.year - first) % 10);
       start = Math.max(first, Math.min(start, last - 9));
       cols = years.filter(function (x) { return x.jahr >= start && x.jahr < start + 10; });
       head = cols.map(function (x) { return '<th class="' + (x.jahr === zu.year ? "sel" : "") + '"><button class="linkrow" data-act="zSetYear" data-y="' + x.jahr + '">' + x.jahr + (x.jahr === fiJ ? "<em>frei</em>" : "") + "</button></th>"; }).join("");
-      cell = function (p, x) { return { v: x[p.got] * x.monate, full: !p.will || x[p.got] >= p.will(a) - 0.5, sel: x.jahr === zu.year }; };
+      cell = function (p, x) { return { v: x.sums[p.sk], w: p.wk ? x.wd[p.wk] : 0, full: !p.will || x[p.got] >= p.will(a) - 0.5, sel: x.jahr === zu.year }; };
+      evCell = function (x) { return { v: -Math.min(0, x.events), sel: x.jahr === zu.year }; };
       nav = '<div class="vt-nav">' + c.btn("‹ früher", "zVl", ' data-s="' + (start - 10) + '"', "btn-sm") + '<span class="muted small">' + start + "–" + Math.min(last, start + 9) + " von " + first + "–" + last + "</span>" + c.btn("später ›", "zVl", ' data-s="' + (start + 10) + '"', "btn-sm") + "</div>";
-      note = "Summe pro Jahr. Das erste Jahr zählt nur die " + years[0].monate + " Monate ab heute. Jahreszahl antippen wählt das Jahr.";
+      note = "Summe pro Jahr, rot darunter: für Anschaffungen entnommen. Das erste Jahr zählt nur die " + years[0].monate + " Monate ab heute. Jahreszahl antippen wählt das Jahr.";
     } else {
-      var y = years.find(function (x) { return x.jahr === zu.year; }), firstM = 12 - y.monate;
-      cols = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"].map(function (m, i) { return { m: m, on: i >= firstM }; });
-      head = cols.map(function (x) { return "<th" + (x.on ? "" : ' class="off"') + ">" + x.m + "</th>"; }).join("");
-      cell = function (p, x) { return x.on ? { v: y[p.got], full: !p.will || y[p.got] >= p.will(a) - 0.5 } : null; };
+      var y = years.find(function (x) { return x.jahr === zu.year; });
+      cols = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"].map(function (m, i) { return { m: m, d: y.months.find(function (mm) { return mm.monat === i + 1; }) }; });
+      head = cols.map(function (x) { return "<th" + (x.d ? "" : ' class="off"') + ">" + x.m + "</th>"; }).join("");
+      cell = function (p, x) { return x.d ? { v: x.d.alloc[p.sk], w: p.wk ? x.d.wd[p.wk] : 0, full: !p.will || x.d.alloc[p.sk] >= p.will(a) - 0.5 } : null; };
+      evCell = function (x) { return x.d ? { v: -Math.min(0, x.d.events) } : null; };
       nav = '<div class="vt-nav">' + c.btn("‹ " + (zu.year - 1), "zSetYear", ' data-y="' + (zu.year - 1) + '"', "btn-sm") + "<b>" + zu.year + "</b>" + c.btn((zu.year + 1) + " ›", "zSetYear", ' data-y="' + (zu.year + 1) + '"', "btn-sm") + "</div>";
-      note = "Betrag pro Monat in " + zu.year + ". Die Rechnung kennt einen Wert pro Jahr, deshalb sind die Monate eines Jahres gleich.";
+      note = "Betrag pro Monat in " + zu.year + ". Rot darunter: was in diesem Monat für Anschaffungen entnommen wurde. Danach füllen sich Töpfe mit Ziel (z. B. Notgroschen) wieder auf.";
     }
     var max = 1; POTS.forEach(function (p) { cols.forEach(function (x) { var k = cell(p, x); if (k) max = Math.max(max, k.v); }); });
     var body = POTS.map(function (p, i) {
@@ -155,13 +164,16 @@
       var tds = cols.map(function (x) {
         var k = cell(p, x); if (!k) return '<td class="off">–</td>';
         sum += k.v; var al = k.v > 0.5 ? Math.round(12 + k.v / max * 48) : 0;
-        return '<td class="' + (k.v < 0.5 ? "zero" : k.full ? "full" : "part") + (k.sel ? " sel" : "") + '" style="--al:' + al + '%">' + (k.v < 0.5 ? "–" : eur0(k.v).replace(" €", "")) + "</td>";
+        var wd = k.w > 0.5 ? '<span class="vt-wd">−' + eur0(k.w).replace(" €", "") + "</span>" : "";
+        return '<td class="' + (k.v < 0.5 ? "zero" : k.full ? "full" : "part") + (k.sel ? " sel" : "") + (wd ? " haswd" : "") + '" style="--al:' + al + '%">' + (k.v < 0.5 ? "–" : eur0(k.v).replace(" €", "")) + wd + "</td>";
       }).join("");
       return '<tr class="art-' + p.art + '"><th class="vt-name"><span class="pot-n">' + (i + 1) + "</span><span><b>" + p.name + '</b><em class="muted">' + (p.will ? "will " + eur0(p.will(a)) + "/Monat" : "bekommt den Rest") + "</em></span></th>" + tds + '<td class="vt-sum num">' + eur0(sum) + "</td></tr>";
     }).join("");
+    var evSum = 0, evTds = cols.map(function (x) { var k = evCell(x); if (!k) return '<td class="off">–</td>'; evSum += k.v; return '<td class="' + (k.v > 0.5 ? "ev" : "zero") + (k.sel ? " sel" : "") + '">' + (k.v > 0.5 ? "−" + eur0(k.v).replace(" €", "") : "–") + "</td>"; }).join("");
+    body += '<tr class="vt-evrow"><th class="vt-name"><span class="pot-n">€</span><span><b>Anschaffungen</b><em class="muted">bezahlt aus den Töpfen</em></span></th>' + evTds + '<td class="vt-sum num">' + (evSum ? "−" + eur0(evSum) : "0 €") + "</td></tr>";
     return '<div class="card z-verlauf"><div class="card-head"><h2>So entwickeln sich die Töpfe</h2><div class="seg seg-sm"><button class="seg-b' + (mode === "jahr" ? " on" : "") + '" data-act="zVlMode" data-m="jahr">Jahre</button><button class="seg-b' + (mode === "monat" ? " on" : "") + '" data-act="zVlMode" data-m="monat">Monate</button></div></div>' +
       nav + '<div class="vt-wrap"><table class="vt"><thead><tr><th></th>' + head + '<th class="vt-sum">Summe</th></tr></thead><tbody>' + body + "</tbody></table></div>" +
-      '<div class="legend-row small muted"><span class="vt-lg full"></span>bekommt alles, was er will <span class="vt-lg part"></span>bekommt nur einen Teil <span class="vt-lg zero">–</span>bekommt nichts</div><p class="muted small">' + c.esc(note) + "</p></div>";
+      '<div class="legend-row small muted"><span class="vt-lg full"></span>bekommt alles, was er will <span class="vt-lg part"></span>bekommt nur einen Teil <span class="vt-lg zero">–</span>bekommt nichts <span class="vt-wd">−123</span>für Anschaffungen entnommen</div><p class="muted small">' + c.esc(note) + "</p></div>";
   }
 
   /* ---------- Annahmen ---------- */
@@ -201,18 +213,20 @@
         : '<p class="muted small fm-b">Du trägst Einnahmen und Fixkosten oben unter „Bearbeiten“ selbst ein.</p>') + "</div>";
   }
 
-  /* ---------- Lebensereignisse: jedes zeigt genau, woher das Geld kommt ---------- */
-  var QUELLEN = [["auto", "automatisch (ETF → Notgroschen → Haus-EK)"], ["etf", "nur ETF-Depot"], ["ng", "nur Notgroschen"], ["hek", "nur Haus-EK"], ["kind", "nur Kinder-Sparen"]];
+  /* ---------- Anschaffungen: jede zeigt genau, woher das Geld kommt ---------- */
+  var MONATE = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+  var QUELLEN = [["auto", "automatisch (Notgroschen → ETF → Haus-EK)"], ["etf", "nur ETF-Depot"], ["ng", "nur Notgroschen"], ["hek", "nur Haus-EK"], ["kind", "nur Kinder-Sparen"]];
   var TOPF = { etf: ["ETF-Depot", "var(--c-etf)"], ng: ["Notgroschen", "var(--c-ng)"], hek: ["Haus-EK", "var(--c-hek)"], kind: ["Kinder-Sparen", "var(--c-kind)"], fehl: ["Fehlbetrag", "var(--neg)"] };
   function events(c, a, r) {
-    var src = c.state.fi, eur0 = c.eur0, list = (src.events || []).map(function (e, i) { return { e: e, i: i }; }).sort(function (x, y) { return x.e.jahr - y.e.jahr || x.i - y.i; });
+    var src = c.state.fi, eur0 = c.eur0, list = (src.events || []).map(function (e, i) { return { e: e, i: i }; }).sort(function (x, y) { return x.e.jahr - y.e.jahr || (Number(x.e.monat) || 1) - (Number(y.e.monat) || 1) || x.i - y.i; });
     var withAmt = list.filter(function (x) { return Number(x.e.betrag); }), without = list.filter(function (x) { return !Number(x.e.betrag); });
     function detailFor(x) {
       var y = r.years.find(function (yy) { return yy.jahr === Number(x.e.jahr); });
       return y ? (y.eventDetails || []).find(function (d) { return d.index === x.i; }) : null;
     }
     function inputsRow(x) {
-      return '<div class="ev-in"><input class="in-num ev-j" inputmode="numeric" data-act="zEv" data-i="' + x.i + '" data-f="jahr" value="' + x.e.jahr + '" aria-label="Jahr">' +
+      return '<div class="ev-in"><select class="ev-mo" data-act="zEv" data-i="' + x.i + '" data-f="monat" aria-label="Monat">' + MONATE.map(function (m, i) { return '<option value="' + (i + 1) + '"' + ((Number(x.e.monat) || 1) === i + 1 ? " selected" : "") + ">" + m + "</option>"; }).join("") + "</select>" +
+        '<input class="in-num ev-j" inputmode="numeric" data-act="zEv" data-i="' + x.i + '" data-f="jahr" value="' + x.e.jahr + '" aria-label="Jahr">' +
         '<input class="ev-t" data-act="zEv" data-i="' + x.i + '" data-f="beschreibung" value="' + c.esc(x.e.beschreibung || "") + '" aria-label="Beschreibung">' +
         '<input class="in-num" inputmode="decimal" data-act="zEv" data-i="' + x.i + '" data-f="betrag" value="' + c.fmt.format(Number(x.e.betrag) || 0) + '" aria-label="Betrag">' +
         (Number(x.e.betrag) < 0 ? '<select data-act="zEv" data-i="' + x.i + '" data-f="quelle" aria-label="Bezahlen aus">' + QUELLEN.map(function (q) { return '<option value="' + q[0] + '"' + ((x.e.quelle || "auto") === q[0] ? " selected" : "") + ">" + q[1] + "</option>"; }).join("") + "</select>" : "") +
@@ -221,25 +235,25 @@
     function card(x) {
       var d = detailFor(x), b = Number(x.e.betrag) || 0, body;
       if (!d) body = '<p class="muted small">Liegt außerhalb der Rechnung (' + r.years[0].jahr + "–" + r.years[r.years.length - 1].jahr + ").</p>";
-      else if (b > 0) body = '<p class="small">Kommt ins <b>ETF-Depot</b>: ' + eur0(d.before.etf) + " → " + eur0(d.after.etf) + "</p>";
+      else if (b > 0) body = '<p class="small">Kommt im ' + MONATE[d.monat - 1] + " ins <b>ETF-Depot</b>: " + eur0(d.before.etf) + " → " + eur0(d.after.etf) + "</p>";
       else {
-        var srcKeys = { auto: ["etf", "ng", "hek"], etf: ["etf"], ng: ["ng"], hek: ["hek"], kind: ["kind"] }[d.quelle] || ["etf", "ng", "hek"];
+        var srcKeys = window.BoSalFI.ORDER[d.quelle] || window.BoSalFI.ORDER.auto;
         var keys = srcKeys.filter(function (k) { return d.paid[k] > 0.5 || d.quelle !== "auto"; }).concat(d.paid.fehl > 0.5 ? ["fehl"] : []);
         var shownAfter = function (k) { return k === "etf" ? d.after.etf + d.paid.fehl : d.after[k]; };
         var bar = '<div class="ev-bar">' + keys.filter(function (k) { return d.paid[k] > 0.5; }).map(function (k) { return '<span style="width:' + (d.paid[k] / -b * 100).toFixed(1) + "%;background:" + TOPF[k][1] + '" title="' + TOPF[k][0] + " " + eur0(d.paid[k]) + '"></span>'; }).join("") + "</div>";
         var rows = keys.map(function (k) {
           return "<tr><td><i style=\"background:" + TOPF[k][1] + '"></i>' + TOPF[k][0] + '</td><td class="num">' + eur0(d.paid[k]) + "</td><td class=\"num muted\">" + (k === "fehl" ? "musst du dir leihen" : eur0(d.before[k]) + " → " + eur0(shownAfter(k)) + (d.before[k] < 0.5 ? " (leer)" : "")) + "</td></tr>";
         }).join("");
-        body = bar + '<table class="ev-tbl"><thead><tr><th>bezahlt aus</th><th>Betrag</th><th>Stand Ende ' + x.e.jahr + ": vorher → nachher</th></tr></thead><tbody>" + rows + "</tbody></table>" +
-          (d.paid.fehl > 0.5 ? '<p class="note">' + eur0(d.paid.fehl) + " fehlen in " + x.e.jahr + ". Die Rechnung führt sie als Minus im ETF-Depot weiter, als hättest du dir das Geld zur ETF-Rendite geliehen. Die folgenden Jahre zahlen es zurück.</p>" : "");
+        body = bar + '<table class="ev-tbl"><thead><tr><th>bezahlt aus</th><th>Betrag</th><th>Stand ' + MONATE[d.monat - 1] + " " + x.e.jahr + ": vorher → nachher</th></tr></thead><tbody>" + rows + "</tbody></table>" +
+          (d.paid.fehl > 0.5 ? '<p class="note">' + eur0(d.paid.fehl) + " fehlen im " + MONATE[d.monat - 1] + " " + x.e.jahr + ". Die Rechnung führt sie als Minus im ETF-Depot weiter, als hättest du dir das Geld zur ETF-Rendite geliehen. Die folgenden Jahre zahlen es zurück.</p>" : "");
       }
       return '<li class="ev-card' + (d && d.paid.fehl > 0.5 ? " warn" : "") + '">' + inputsRow(x) + body + "</li>";
     }
-    return '<div class="card"><div class="card-head"><h2>Lebensereignisse</h2><span class="muted small">Kosten mit Minus eintragen, z. B. −20.000 für ein Auto</span></div>' +
-      '<p class="muted small">Wichtig: Es gibt nur <b>ein</b> ETF-Depot. Die Töpfe 1 (ETF-Mindestbetrag) und 8 (ETF-Rest) zahlen beide dort ein. Kosten werden am Ende des Jahres bezahlt, also nachdem die Sparraten des Jahres eingezahlt sind.</p>' +
+    return '<div class="card"><div class="card-head"><h2>Anschaffungen</h2><span class="muted small">Monat, Jahr, Kosten mit Minus, z. B. −20.000 für ein Auto</span></div>' +
+      '<p class="muted small">Bezahlt wird im gewählten Monat, nachdem die Sparraten dieses Monats eingezahlt sind. Es gibt nur <b>ein</b> ETF-Depot: Die Töpfe 1 (ETF-Mindestbetrag) und 8 (ETF-Rest) zahlen beide dort ein. Wird der Notgroschen angezapft, füllt er sich in den Monaten danach wieder auf.</p>' +
       '<ul class="ev-cards">' + withAmt.map(card).join("") + "</ul>" +
-      (without.length ? '<details class="ev-empty"' + (zu.evEmptyOpen ? " open" : "") + '><summary>' + without.length + " Ereignisse ohne Betrag (zählen nicht)</summary><ul class=\"ev-cards\">" + without.map(function (x) { return '<li class="ev-card">' + inputsRow(x) + "</li>"; }).join("") + "</ul></details>" : "") +
-      c.btn("＋ Ereignis", "zEvAdd", "", "btn-sm") + "</div>";
+      (without.length ? '<details class="ev-empty"' + (zu.evEmptyOpen ? " open" : "") + '><summary>' + without.length + " Anschaffungen ohne Betrag (zählen nicht)</summary><ul class=\"ev-cards\">" + without.map(function (x) { return '<li class="ev-card">' + inputsRow(x) + "</li>"; }).join("") + "</ul></details>" : "") +
+      c.btn("＋ Anschaffung", "zEvAdd", "", "btn-sm") + "</div>";
   }
 
   /* ---------- Was korrigiert wurde: alt gegen neu, live ---------- */
@@ -249,7 +263,7 @@
     function runOld(mod) { var b = clone(src); if (mod) mod(b); return L.runFI(b); }
     function t(rows) { return '<table class="pp-tbl"><thead><tr><th></th><th>vorher</th><th>jetzt</th></tr></thead><tbody>' + rows.map(function (x) { return "<tr><td>" + x[0] + '</td><td class="num">' + x[1] + '</td><td class="num">' + x[2] + "</td></tr>"; }).join("") + "</tbody></table>"; }
     var evY = r.startjahr + 2;
-    var o3 = runOld(function (b) { b.events = [{ jahr: evY, betrag: -20000 }]; }), n3 = runNew(function (b) { b.events = [{ jahr: evY, betrag: -20000 }]; });
+    var o3 = runOld(function (b) { b.events = [{ jahr: evY, betrag: -20000 }]; }), n3 = runNew(function (b) { b.events = [{ jahr: evY, monat: 12, betrag: -20000 }]; });
     var n3b = runNew(function (b) { b.events = []; }), o3b = runOld(function (b) { b.events = []; });
     function at(rr, j) { return rr.years.find(function (y) { return y.jahr === j; }) || { vermoegen: 0 }; }
     var lostOld = 0, pH = src.hausEkStart || 0, pN = src.notgroschenStart || 0;
@@ -261,7 +275,7 @@
         t([["Laufende Kosten pro Monat (letztes Jahr)", eur0(old.years[old.years.length - 1].fixkosten), eur0(r.years[r.years.length - 1].bedarf)], ["Gebrauchtes Erspartes", eur0(old.years[old.years.length - 1].fixkosten * 12 / 0.04), eur0(r.years[r.years.length - 1].bedarf * 12 / 0.04)]])],
       ["Haus-EK zählt nicht mehr zur Freiheit", "Das Haus-Geld zählte beim FI-Test mit und blieb für immer liegen.", "Haus-EK und Kinder-Sparen sind zweckgebunden und zählen nicht mit. Optional: ein Kaufjahr, dann wird das Haus-EK eingesetzt.",
         t([["Haus-EK im FI-Jahr mitgezählt", eur0(oldFiRow.hausEk || 0), "0 €"], ["Kaufjahr", "–", src.hauskaufJahr || "nicht gesetzt"]])],
-      ["Lebensereignisse werden voll verrechnet", "Ein Ereignis wurde ÷ 12 vom Freien abgezogen, teils nur für die Restmonate, und kürzte Lebensqualität und Auto. Der Rest verschwand.", "Der volle Betrag wird vom Ersparten abgezogen: ETF, dann Notgroschen, dann Haus-EK. Reicht es nicht, siehst du den Fehlbetrag.",
+      ["Anschaffungen werden voll verrechnet", "Ein Ereignis wurde ÷ 12 vom Freien abgezogen, teils nur für die Restmonate, und kürzte Lebensqualität und Auto. Der Rest verschwand.", "Der volle Betrag wird im gewählten Monat vom Ersparten abgezogen: Notgroschen, dann ETF, dann Haus-EK (pro Anschaffung änderbar). Reicht es nicht, siehst du den Fehlbetrag.",
         t([["Test: −20.000 € im Jahr " + evY + " → Vermögen sinkt um", eur0(at(o3b, evY).vermoegen - at(o3, evY).vermoegen), eur0(at(n3b, evY).vermoegen - at(n3, evY).vermoegen)]])],
       ["Kinder-Sparen ist ein echter Topf", "Die „Kind-Sparrate“ wurde jeden Monat ausgegeben.", "Auto bleibt eine Ausgabe, Kinder-Sparen wird angespart und hat einen Stand.",
         t([["Kinder-Sparen im FI-Jahr", "0 €", eur0(fiRow.kind)]])],
@@ -324,8 +338,8 @@
     if (act === "zVlMode") { zu.vlMode = d.m; return true; }
     if (act === "zVl") { zu.vlStart = +d.s; return true; }
     if (act === "zAus") { c.mark("Quelle für Startwerte geändert"); if (d.v === "0" && a.ausMonat) { var mv = monthValues(c, a); a.einnahmen = mv.ein; a.fixkosten = mv.fix; } a.ausMonat = d.v === "1"; return true; }
-    if (act === "zEvAdd") { c.mark("Ereignis hinzugefügt"); (a.events = a.events || []).push({ jahr: new Date().getFullYear() + 1, beschreibung: "Neues Ereignis", betrag: -1000 }); return true; }
-    if (act === "zEvDel") { c.mark("Ereignis gelöscht"); a.events.splice(+d.i, 1); return true; }
+    if (act === "zEvAdd") { c.mark("Anschaffung hinzugefügt"); (a.events = a.events || []).push({ jahr: new Date().getFullYear() + 1, monat: 1, beschreibung: "Neue Anschaffung", betrag: -1000 }); return true; }
+    if (act === "zEvDel") { c.mark("Anschaffung gelöscht"); a.events.splice(+d.i, 1); return true; }
     return false;
   }
   function change(c, el) {
@@ -335,8 +349,8 @@
     if (act === "zPick") { zu.pick[el.dataset.id] = el.checked; return true; }
     if (act === "zBed") { c.mark("Lebensbedarf geändert"); a.fiBedarf[el.dataset.k] = el.checked; return true; }
     if (act === "zEv") {
-      var e = a.events[+el.dataset.i], f = el.dataset.f; c.mark("Ereignis geändert");
-      if (f === "beschreibung" || f === "quelle") e[f] = el.value; else { var n2 = c.parseNum(el.value); if (!isNaN(n2)) e[f] = f === "jahr" ? Math.round(n2) : n2; }
+      var e = a.events[+el.dataset.i], f = el.dataset.f; c.mark("Anschaffung geändert");
+      if (f === "beschreibung" || f === "quelle") e[f] = el.value; else { var n2 = c.parseNum(el.value); if (!isNaN(n2)) e[f] = f === "jahr" || f === "monat" ? Math.round(n2) : n2; }
       return true;
     }
     if (act === "zFi") {

@@ -205,3 +205,13 @@ label.pal { cursor: pointer; }
 .ev-tbl td i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
 .ev-tbl td.num { text-align: left; }
 .ev-empty > summary { cursor: pointer; color: var(--muted); font-size: 13px; margin: 6px 0; }
+/* Entnahmen für Anschaffungen */
+.vt td .vt-wd, .legend-row .vt-wd { display: block; font-size: 11px; font-weight: 800; color: var(--neg); }
+.legend-row .vt-wd { display: inline; margin-right: -8px; }
+.vt td.haswd { box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--neg) 60%, transparent); }
+.vt tr.vt-evrow td.ev { background: color-mix(in srgb, var(--neg) 18%, var(--surface2)); color: var(--neg); font-weight: 800; }
+.vt tr.vt-evrow th, .vt tr.vt-evrow td { border-top: 2px solid var(--line-strong); }
+.st-wd { white-space: nowrap; } .st-wd em { display: block; }
+.st-tbl td.num em, .st-tbl td em.muted { display: block; font-style: normal; }
+.st-tbl tr.st-ev td { border-top: 2px solid var(--line-strong); background: color-mix(in srgb, var(--neg) 6%, transparent); }
+.ev-in .ev-mo { width: 76px; }
