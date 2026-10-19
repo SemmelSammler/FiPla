@@ -139,3 +139,14 @@ body { padding-top: 0; }
 
 [data-design="weich"] .hero.hero-plan { color: var(--ink); --muted: #7C809A; --line: var(--line-strong); --pos: #109D74; --neg: #EB4F78; }
 
+/* Testversion: Daten, feste Posten */
+.mode-b { border: 1px dashed var(--line-strong); background: var(--surface); color: var(--accent); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.fp-tbl { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 860px; }
+.fp-tbl th { font-size: 12px; color: var(--muted); text-align: left; padding: 6px; border-bottom: 1px solid var(--line-strong); }
+.fp-tbl td { padding: 6px; border-bottom: 1px dashed var(--line); vertical-align: middle; }
+.fp-tbl .r { text-align: right; }
+.fp-tbl input:not([type=checkbox]), .fp-tbl select { width: 100%; background: var(--surface2); border: 1px solid var(--line); border-radius: 10px; padding: 7px 9px; font: inherit; font-size: 14px; color: var(--ink); }
+.fp-tbl .in-num { text-align: right; }
+.fp-tbl .fp-day { width: 56px; }
+.fp-tbl tr.off td { opacity: .5; }

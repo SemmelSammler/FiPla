@@ -162,3 +162,22 @@ Annahmen → Diagramme (Vermögen, FI-Test; Überarbeitung folgt) → „So wird
 - Keine farbigen Rahmen mehr in der Tabelle (vorher: „weniger als gewollt“, gewähltes Jahr, Entnahme).
 - Ausrichtung: Die globale Regel `.card + .card { margin-top }` verschob in allen Zwei-Spalten-Layouts
   die zweite Karte nach unten. Jetzt nur noch direkt in `.main`. Alle Zwei-Spalten-Layouts 1,35 : 1.
+
+## Testversion mit echten Daten (Entwurf 17)
+
+- **Notgroschen vor Haus-EK** in der Verteilung (Entscheidung des Nutzers).
+- **Zwei Modi:** „Mit meinen Daten starten“ (wird im Browser gespeichert, `localStorage` Schlüssel
+  `bosal.daten.v1`) und „Beispieldaten“ (nichts wird gespeichert). Backup als JSON speichern/laden,
+  „Alles löschen“ unter Mehr.
+- **CSV-Import** (Kassensturz Schritt 1 oder Mehr): Girokonto (Sparkasse CSV-CAMT, über
+  `Logic.parseSparkasseCsv`, Dubletten- und Vormerkungs-Abgleich) und Kreditkarte (Sparkasse-KK-CSV,
+  eigener Parser, separat in `state.kk`, nur für „Ausgaben“). Zeichensatz UTF-8 oder Windows-1252.
+- **Kategorien:** Rückfall auf die Bank-Kategorie (Spalte „Kategorie“) bzw. bei der Kreditkarte auf
+  den Händlercode (MCC, Spalte „Gebührenschlüssel“), wenn kein fester Posten und keine eigene Regel passt.
+- **Feste Posten** unter Mehr bearbeitbar (Name, Typ, Betrag, Suchbegriff, Stichtag, aktiv) mit
+  Anzeige „zuletzt erkannt“. Echte Suchbegriffe: Gehalt „lohn - gehalt“ (Reisekosten sind kein Gehalt),
+  Mietanteil „miete“.
+- Abgeschlossene Monate aus dem Import: Einnahmen minus Ausgaben laut Kontoauszug.
+- **Offen:** Die Fixkosten-CSV des Nutzers fehlt noch (Kreditkarten-CSV wurde doppelt hochgeladen).
+  Aufgefallen im Girokonto, aber nicht unter den festen Posten: Deutschlandticket (DB, 63 €/Monat),
+  Rundfunkbeitrag (55,08 € pro Quartal), Baloise (66,71 €, zuletzt 01.09.2026), Amazon-Ratenzahlung (66,60 €).

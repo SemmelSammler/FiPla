@@ -27,16 +27,17 @@
   }
   function mkLabel(v) { if (!v) return null; var p = String(v).split("-"); return MONL[+p[1] - 1] + " " + p[0]; }
   // Einnahmen/Fixkosten live aus dem Monat (Korrektur 6)
+  // Welche festen Posten zählen für die Zukunft (gespeichert, neue Posten zählen automatisch)
+  function picked(c, i) { var p = c.state.fi.pick; return !p || p[i.id] !== false; }
   function monthValues(c, a) {
     var mk = zu.src || c.state.active;
     var items = c.state.expected.filter(function (i) { return i.aktiv && i.typ !== "Schulden"; });
-    if (!zu.pick) { zu.pick = {}; items.forEach(function (i) { zu.pick[i.id] = true; }); }
     // Geteilte Kosten: Einnahmen „Anteil von anderen“ sind kein Gehalt, sie senken deine geteilten Fixkosten
     items.forEach(function (i) {
       if (i.typ === "Einnahme" && i.anteilVon == null) i.anteilVon = /anteil/i.test(i.beschreibung);
       if (i.typ === "Fixkosten" && i.geteilt == null) i.geteilt = /miete|strom|internet|gas\b|wasser|nebenkosten|rundfunk/i.test(i.beschreibung);
     });
-    var on = items.filter(function (i) { return zu.pick[i.id]; }), v = function (i) { return c.sollOf(mk, i); };
+    var on = items.filter(function (i) { return picked(c, i); }), v = function (i) { return c.sollOf(mk, i); };
     var sum = function (l) { return Math.round(l.reduce(function (s, i) { return s + Math.abs(v(i)); }, 0) * 100) / 100; };
     var lohn = sum(on.filter(function (i) { return i.typ === "Einnahme" && !i.anteilVon; })), erst = sum(on.filter(function (i) { return i.typ === "Einnahme" && i.anteilVon; }));
     var geteilt = sum(on.filter(function (i) { return i.typ === "Fixkosten" && i.geteilt; })), allein = sum(on.filter(function (i) { return i.typ === "Fixkosten" && !i.geteilt; }));
@@ -105,7 +106,7 @@
     function li(label, v, hint, cls) { return '<li class="' + (cls || "") + '"><span>' + label + (hint ? '<em class="muted">' + esc(hint) + "</em>" : "") + '</span><span class="num">' + eur(v) + "</span></li>"; }
     function names(list) { return list.map(function (i) { return i.beschreibung; }).join(", "); }
     function box(title, items, sumLabel, sum, foot) { return '<div class="zf-box"><h3>' + title + '</h3><ul class="zf-l">' + items + '</ul><div class="zf-sum"><span>' + sumLabel + '</span><span class="num">' + eur(sum) + "</span></div>" + (foot ? '<p class="muted small">' + esc(foot) + "</p>" : "") + "</div>"; }
-    var on = mv ? mv.items.filter(function (i) { return zu.pick[i.id]; }) : [];
+    var on = mv ? mv.items.filter(function (i) { return picked(c, i); }) : [];
     var lohn = on.filter(function (i) { return i.typ === "Einnahme" && !i.anteilVon; }), erst = on.filter(function (i) { return i.typ === "Einnahme" && i.anteilVon; });
     var get = on.filter(function (i) { return i.typ === "Fixkosten" && i.geteilt; }), allein = on.filter(function (i) { return i.typ === "Fixkosten" && !i.geteilt; });
     var bisM = MONL[(a.erhoehungMonat + 10) % 12], abM = MONL[a.erhoehungMonat - 1], lohnN = lohn.length ? names(lohn) : "Einnahmen netto";
@@ -217,8 +218,8 @@
     { k: "auto", nr: "7", name: "Auto", art: "ausgegeben", will: "autoPauschale" },
     { k: "kredit", nr: "!", name: "Kredit aus Anschaffungen", art: "ausgegeben", only: true },
     { k: "kind", nr: "4", name: "Kinder-Sparen", art: "gespart", will: "kindSparrate" },
-    { k: "hausEk", nr: "3", name: "Haus-EK", art: "gespart", will: "hausEkRate", ziel: "hausEkZiel", st: "hek" },
     { k: "notgroschen", nr: "2", name: "Notgroschen", art: "gespart", will: "notgroschenRate", ziel: "notgroschenZiel", st: "ng" },
+    { k: "hausEk", nr: "3", name: "Haus-EK", art: "gespart", will: "hausEkRate", ziel: "hausEkZiel", st: "hek" },
     { k: "etfRest", nr: "1", name: "ETF-Depot: der ganze Rest", art: "gespart" },
     { k: "unverplant", nr: "–", name: "Nicht verplant", art: "frei", only: true }
   ];
@@ -307,7 +308,7 @@
     var src = c.state.fi, mv = monthValues(c, a), months = c.months(), eur = c.eur;
     function line(i, tag) {
       var val = Math.abs(c.sollOf(mv.mk, i));
-      return '<div class="fm-i' + (zu.pick[i.id] ? "" : " off") + '"><input type="checkbox" data-act="zPick" data-id="' + i.id + '"' + (zu.pick[i.id] ? " checked" : "") + ' aria-label="mitrechnen"> <span>' + c.esc(i.beschreibung) + "</span>" + (tag || "") + '<span class="num muted">' + eur(val) + "</span></div>";
+      return '<div class="fm-i' + (picked(c, i) ? "" : " off") + '"><input type="checkbox" data-act="zPick" data-id="' + i.id + '"' + (picked(c, i) ? " checked" : "") + ' aria-label="mitrechnen"> <span>' + c.esc(i.beschreibung) + "</span>" + (tag || "") + '<span class="num muted">' + eur(val) + "</span></div>";
     }
     function sw(i, k, labelOn, labelOff) { return '<button class="fm-tag' + (i[k] ? " on" : "") + '" data-act="zTag" data-id="' + i.id + '" data-k="' + k + '" title="umschalten">' + (i[k] ? labelOn : labelOff) + "</button>"; }
     var ein = mv.items.filter(function (i) { return i.typ === "Einnahme"; }), fix = mv.items.filter(function (i) { return i.typ === "Fixkosten"; });
@@ -428,7 +429,7 @@
     if (act === "zYear") { zu.year = +el.value; zu.vlStart = null; return true; }
     if (act === "zVtM") { zu.vtMonat = +el.value; return true; }
     if (act === "zSrc") { zu.src = el.value; return true; }
-    if (act === "zPick") { zu.pick[el.dataset.id] = el.checked; return true; }
+    if (act === "zPick") { c.mark("Posten für die Zukunft " + (el.checked ? "an" : "aus")); (a.pick = a.pick || {})[el.dataset.id] = el.checked; return true; }
     if (act === "zBed") { c.mark("Lebensbedarf geändert"); a.fiBedarf[el.dataset.k] = el.checked; return true; }
     if (act === "zEv") {
       var e = a.events[+el.dataset.i], f = el.dataset.f; c.mark("Anschaffung geändert");

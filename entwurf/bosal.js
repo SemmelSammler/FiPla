@@ -4,45 +4,68 @@
   "use strict";
   var L = window.Logic, D = window.DEFAULTS, S = window.SEED;
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
-  var uidN = 0; function uid(p) { return p + "-" + (++uidN); }
+  var uidN = 0; function uid(p) { return p + "-" + Date.now().toString(36) + "-" + (++uidN); }
 
   var now = new Date();
   var CUR = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
   function dayIso(mk, d) { return mk + "-" + String(d).padStart(2, "0"); }
 
   /* ---------- Zustand ---------- */
-  var state = {
-    transactions: clone(S.transactions), expected: clone(S.expected),
-    categories: clone(D.categories), months: {}, fi: clone(D.fi),
-    active: CUR,                       // Budgetmonat, unabhängig vom Kalender
-    startedEarly: null,                // Datum, falls früh gestartet
-    konten: { giro: null, konto2: null, kk: null }, kontoAt: null, importAt: null, kontoEinzeln: false,
-    transfers: [],                     // Geld zwischen Monaten verschieben: { von, nach, betrag, text }
-    prevCtx: null,
-    overrides: {},                     // { mk: { itemId: Betrag } } — abweichende Planwerte für einzelne Monate                     // für „Zurück in den Vormonat“
-    offen: [],                         // offene Posten (wandern automatisch mit)
-    carry: [],                         // feste Posten aus dem Vormonat, die noch nicht abgebucht waren
-    frozen: {},                        // abgeschlossene Monate: { mk: Endstand }
-    demoImported: false
-  };
-  // Feste Posten wie in der App des Nutzers (Stand 18.10.2026). Weg: Konsumkredit, Baloise BU, Fitness,
-  // OpenAI, PS Plus, Nintendo. Spotify steht dort versehentlich mit +21,99 €, hier als Ausgabe.
+  // Zwei Modi: „echt“ (deine Daten, wird im Browser gespeichert) und „demo“ (Beispieldaten, nichts wird gespeichert)
+  var STORE = "bosal.daten.v1";
+  // Feste Posten wie in der App des Nutzers (Stand 18.10.2026). Spotify stand dort versehentlich mit +21,99 €.
   var AKTUELL = { "exp-01": 3427.74, "exp-02": 538, "exp-03": -1003.01, "exp-04": -500, "exp-06": -72, "exp-07": -86.89, "exp-10": -24.99, "exp-12": -21.99, "exp-13": -21.7, "exp-15": -8.99, "exp-17": -2.99, "exp-18": -300 };
-  state.expected = state.expected.filter(function (i) { return AKTUELL[i.id] != null; });
-  state.expected.forEach(function (i) { i.betrag = AKTUELL[i.id]; });
-  L.enrichAll(state);
-  // Abgeschlossene Monate (im echten Tool: dein letzter Übrig-Wert beim Abschluss)
-  L.monthRange(state.transactions.reduce(function (m, t) { return t.effMonat < m ? t.effMonat : m; }, CUR), L.prevMonth(CUR))
-    .forEach(function (mk) { state.frozen[mk] = L.monthCockpit(state, mk).prognoseSaldo; });
-  // Beispiel-Einträge, damit der Entwurf nicht leer ist (erfundene Personen)
-  var prev = L.prevMonth(CUR);
-  state.offen = [
-    { id: uid("o"), art: "forderung", text: "Konzertkarten (ihr Anteil)", betrag: 50, person: "Anna", kat: "freizeit", seit: prev },
-    { id: uid("o"), art: "schuld", text: "Kino, hat Max bezahlt", betrag: 24, person: "Max", kat: "freizeit", seit: CUR },
-    { id: uid("o"), art: "schwebend", text: "Zalando-Rechnung", betrag: 89.99, kat: "shopping", seit: CUR },
-    { id: uid("o"), art: "ruecklage", text: "Urlaub", betrag: 200, kat: "sparen", seit: CUR },
-    { id: uid("o"), art: "geplant", text: "Geschenk Mama", betrag: 40, richtung: -1, kat: "freizeit", seit: CUR }
-  ];
+  // Genauere Suchbegriffe für echte Kontoauszüge: Reisekosten-Erstattungen sind kein Gehalt, nicht jede Überweisung von Laura ist Miete
+  var SUCH_ECHT = { "exp-01": "lohn - gehalt", "exp-02": "miete" };
+  function makeState(modus) {
+    var demo = modus === "demo";
+    var st = {
+      modus: modus, version: 1,
+      transactions: demo ? clone(S.transactions) : [], kk: [], expected: clone(S.expected),
+      categories: clone(D.categories), months: {}, fi: clone(D.fi),
+      active: CUR,                       // Budgetmonat, unabhängig vom Kalender
+      startedEarly: null,                // Datum, falls früh gestartet
+      konten: { giro: null, konto2: null, kk: null }, kontoAt: null, importAt: null, kontoEinzeln: false,
+      transfers: [],                     // Geld zwischen Monaten verschieben: { von, nach, betrag, text }
+      prevCtx: null,                     // für „Zurück in den Vormonat“
+      overrides: {},                     // { mk: { itemId: Betrag } } — abweichende Planwerte für einzelne Monate
+      offen: [],                         // offene Posten (wandern automatisch mit)
+      carry: [],                         // feste Posten aus dem Vormonat, die noch nicht abgebucht waren
+      frozen: {},                        // abgeschlossene Monate: { mk: Endstand }
+      demoImported: false, importLog: []
+    };
+    st.expected = st.expected.filter(function (i) { return AKTUELL[i.id] != null; });
+    st.expected.forEach(function (i) { i.betrag = AKTUELL[i.id]; if (!demo && SUCH_ECHT[i.id]) i.suchbegriff = SUCH_ECHT[i.id]; });
+    L.enrichAll(st);
+    freezePast(st);
+    if (demo) {
+      var prev = L.prevMonth(CUR);   // Beispiel-Einträge (erfundene Personen)
+      st.offen = [
+        { id: uid("o"), art: "forderung", text: "Konzertkarten (ihr Anteil)", betrag: 50, person: "Anna", kat: "freizeit", seit: prev },
+        { id: uid("o"), art: "schuld", text: "Kino, hat Max bezahlt", betrag: 24, person: "Max", kat: "freizeit", seit: CUR },
+        { id: uid("o"), art: "schwebend", text: "Zalando-Rechnung", betrag: 89.99, kat: "shopping", seit: CUR },
+        { id: uid("o"), art: "ruecklage", text: "Urlaub", betrag: 200, kat: "sparen", seit: CUR },
+        { id: uid("o"), art: "geplant", text: "Geschenk Mama", betrag: 40, richtung: -1, kat: "freizeit", seit: CUR }
+      ];
+    }
+    return st;
+  }
+  // Abgeschlossene Monate ohne gespeicherten Endstand: Einnahmen minus Ausgaben laut Kontoauszug (im echten Ablauf: Übrig beim Monatsstart)
+  function freezePast(st) {
+    if (!st.transactions.length) return;
+    L.monthRange(st.transactions.reduce(function (m, t) { return t.effMonat < m ? t.effMonat : m; }, st.active), L.prevMonth(st.active))
+      .forEach(function (mk) { if (st.frozen[mk] == null) st.frozen[mk] = L.sum(st.transactions.filter(function (t) { return t.effMonat === mk; })); });
+  }
+  function loadSaved() {
+    try { var raw = localStorage.getItem(STORE); if (!raw) return null; var st = JSON.parse(raw); if (!st || st.modus !== "echt") return null; st.kk = st.kk || []; st.importLog = st.importLog || []; return st; } catch (e) { return null; }
+  }
+  var saveErr = null;
+  function save() {
+    if (state.modus !== "echt") return;
+    try { localStorage.setItem(STORE, JSON.stringify(state)); saveErr = null; } catch (e) { saveErr = String(e && e.message || e); }
+  }
+  var state = loadSaved(), firstRun = !state;
+  if (!state) state = makeState("demo");
 
   var ART = {
     forderung: { label: "Mir geschuldet", short: "schuldet mir", sign: 1, ico: "↙", hint: "Jemand gibt dir noch Geld zurück." },
@@ -65,7 +88,7 @@
   var PALETTES = [["violett", "Violett", "#6A5AE0", "#EB4F78"], ["ozean", "Ozean", "#1E6FD9", "#18B6A6"], ["wald", "Wald", "#2F7D4F", "#A3B83A"], ["koralle", "Koralle", "#E2574C", "#F2A93B"], ["sand", "Sand", "#9A7652", "#D9A86C"],
     ["beere", "Beere", "#B0306A", "#7A3FD1"], ["mint", "Mint", "#13A58A", "#7DD3A8"], ["petrol", "Petrol", "#0E6E80", "#3AA0C8"], ["gold", "Gold", "#B8860B", "#E8A33A"], ["graphit", "Graphit", "#3F4656", "#8A93A6"]];
   var MODES = [["hell", "Hell"], ["dunkel", "Dunkel"], ["system", "Wie System"]];
-  var ui = { palette: "violett", mode: "hell", custom: null, view: "monat", modal: null, repMonth: null, shareMode: true, sortOpen: false, skipped: {}, toast: null, addArt: "forderung", showDone: false };
+  var ui = { modal: firstRun ? { type: "welcome" } : null, palette: "violett", mode: "hell", custom: null, view: "monat", repMonth: null, shareMode: true, sortOpen: false, skipped: {}, toast: null, addArt: "forderung", showDone: false };
 
   /* ---------- Hilfen ---------- */
   var fmt = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -84,6 +107,32 @@
   function btn(label, act, extra, kind) { return '<button class="btn ' + (kind || "") + '" data-act="' + act + '"' + (extra || "") + ">" + label + "</button>"; }
   function parseNum(s) { s = String(s || "").trim(); if (!s) return NaN; if (s.indexOf(",") !== -1 || /^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "").replace(",", "."); return parseFloat(s); }
   function isKK(t) { return /kreditkartenabrechnung/i.test((t.zweck || "") + " " + (t.text || "")); }
+  function txById(id) { return state.transactions.find(function (x) { return x.id === id; }) || state.kk.find(function (x) { return x.id === id; }); }
+  // Kategorie der Bank als Rückfall, wenn weder ein fester Posten noch eine eigene Regel passt
+  var BANK_KAT = { "Einkäufe": "shopping", "Freizeit und Unterhaltung": "freizeit", "Lebensmittel und Drogerie": "lebensmittel", "Mobilität": "mobilitaet", "Wohnen und Garten": "wohnen",
+    "Telekommunikation": "vertraege", "Gesundheit und Wellness": "gesundheit", "Bargeld": "bargeld", "Absicherung und Vorsorge": "versicherung", "Geldanlage": "sparen", "Sport und Hobby": "freizeit", "Reisen": "freizeit" };
+  // Kreditkarte: Händler-Kategorie (MCC) aus der Spalte „Gebührenschlüssel“
+  function mccKat(m) {
+    m = parseInt(m, 10); if (isNaN(m)) return null;
+    if ((m >= 3000 && m <= 3299) || (m >= 3351 && m <= 3441) || (m >= 4011 && m <= 4131) || m === 4784 || m === 7512 || m === 7523 || m === 5541 || m === 5542 || m === 4121) return "mobilitaet";
+    if ((m >= 3501 && m <= 3999) || m === 7011 || m === 4722 || m === 7832 || m === 7997 || m === 7991 || m === 7996 || m === 7922) return "freizeit";
+    if (m === 5411 || m === 5499 || m === 5921 || m === 5441 || m === 5462) return "lebensmittel";
+    if (m === 5812 || m === 5813 || m === 5814) return "restaurants";
+    if (m === 5912 || m === 8011 || m === 8021 || m === 8099) return "gesundheit";
+    if (m === 5734 || m === 5815 || m === 5816 || m === 5817 || m === 5818 || m === 4816 || m === 4899) return "abos";
+    if (m === 6011 || m === 6010) return "bargeld";
+    if (m >= 5000 && m <= 5999) return "shopping";
+    return null;
+  }
+  function enrichEverything() {
+    L.enrichAll(state); state.kk.forEach(function (t) { L.enrichTx(t, [], state.categories); });
+    state.transactions.concat(state.kk).forEach(function (t) {
+      if (t.manuelleKat || t.match || t.kategorieId !== "sys-ausgabe") return;
+      var k = t.konto === "kk" ? mccKat(t.mcc) : BANK_KAT[t.bankKat];
+      if (k) t.kategorieId = k;
+    });
+  }
+  function kkMonths() { var m = {}; state.kk.forEach(function (t) { m[t.effMonat] = true; }); return m; }
   function isUnsorted(t) { return t.betrag < 0 && !t.match && t.kategorieId === "sys-ausgabe" && !t.settles && !isKK(t); }
 
   function sollOf(mk, item) { var o = state.overrides[mk]; return o && o[item.id] != null ? o[item.id] : item.betrag; }
@@ -133,7 +182,7 @@
     return openList().map(function (o) {
       var s = signOf(o);
       var cands = state.transactions.filter(function (t) {
-        return t.demo && !t.settles && !used[t.id] && Math.abs(Math.abs(t.betrag) - o.betrag) < 0.01 && (t.betrag > 0 ? 1 : -1) === s;
+        return (t.demo || t.neu) && !t.settles && !used[t.id] && Math.abs(Math.abs(t.betrag) - o.betrag) < 0.01 && (t.betrag > 0 ? 1 : -1) === s;
       });
       if (!cands.length) return null;
       var hay = function (t) { return ((t.empfaenger || "") + " " + (t.zweck || "")).toLowerCase(); };
@@ -168,10 +217,96 @@
     return add.length;
   }
 
+  /* ---------- Import: CSV-Dateien der Sparkasse (Girokonto und Kreditkarte) ---------- */
+  function decodeCsv(buf) { var u8 = new Uint8Array(buf); try { return new TextDecoder("utf-8", { fatal: true }).decode(u8); } catch (e) { return new TextDecoder("windows-1252").decode(u8); } }
+  function splitCsv(text) {
+    var rows = [], row = [], f = "", q = false; text = text.replace(/^\uFEFF/, "");
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+      if (q) { if (ch === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += ch; }
+      else if (ch === '"') q = true; else if (ch === ";") { row.push(f); f = ""; } else if (ch === "\n") { row.push(f); rows.push(row); row = []; f = ""; } else if (ch !== "\r") f += ch;
+    }
+    if (f || row.length) { row.push(f); rows.push(row); }
+    return rows.filter(function (r) { return r.some(function (c) { return c.trim(); }); });
+  }
+  function isKKCsv(text) { var h = text.slice(0, 600).toLowerCase(); return h.indexOf("belegdatum") !== -1 && h.indexOf("buchungsbetrag") !== -1; }
+  // Kreditkarten-CSV: nur für die Auswertung „Ausgaben“, nicht für den Kassensturz
+  function parseKK(text) {
+    var rows = splitCsv(text), h = rows[0].map(function (x) { return x.toLowerCase().replace(/[^a-z]/g, ""); });
+    function col(n) { return h.indexOf(n); }
+    var iB = col("belegdatum"), iD = col("buchungsdatum"), iA = col("buchungsbetrag"), iT = col("transaktionsbeschreibung"), iZ = col("transaktionsbeschreibungzusatz");
+    var iM = h.findIndex(function (x) { return x.indexOf("geb") === 0 && x.indexOf("schl") !== -1; });
+    return rows.slice(1).map(function (r) {
+      var betrag = L.parseGermanAmount(r[iA]), datum = L.parseAnyDate(r[iB]) || L.parseAnyDate(r[iD]);
+      if (!datum || isNaN(betrag)) return null;
+      var e = (r[iT] || "").trim();
+      return { datum: datum, buchung: L.parseAnyDate(r[iD]), text: "Kreditkarte", empfaenger: e, zweck: (r[iZ] || "").trim(), betrag: Math.round(betrag * 100) / 100, info: "Umsatz gebucht", konto: "kk", ausgleich: betrag > 0 && /^lastschrift$/i.test(e), manuelleKat: false, mcc: iM >= 0 ? (r[iM] || "").trim() : "" };
+    }).filter(Boolean);
+  }
+  // Spalte „Kategorie“ der Sparkasse an die gelesenen Buchungen hängen (über Datum, Betrag, Empfänger)
+  function bankKategorien(text, txs) {
+    var rows = splitCsv(text), h = rows[0].map(function (x) { return x.toLowerCase().replace(/[^a-z]/g, ""); });
+    var iK = h.indexOf("kategorie"), iD = h.indexOf("buchungstag"), iA = h.indexOf("betrag"), iE = h.findIndex(function (x) { return x.indexOf("beguenstigter") === 0; });
+    if (iK < 0 || iD < 0 || iA < 0) return;
+    var map = {};
+    rows.slice(1).forEach(function (r) { var k = L.parseAnyDate(r[iD]) + "|" + L.parseGermanAmount(r[iA]).toFixed(2) + "|" + (r[iE] || "").trim().toLowerCase(); (map[k] = map[k] || []).push((r[iK] || "").trim()); });
+    txs.forEach(function (t) { var l = map[L.dedupeKey(t)]; if (l && l.length) t.bankKat = l.shift(); });
+  }
+  function importFiles(files) {
+    Promise.all([].map.call(files, function (f) { return f.arrayBuffer().then(function (b) { return { name: f.name, text: decodeCsv(b) }; }); })).then(function (list) {
+      mark("Import");
+      state.transactions.forEach(function (t) { delete t.neu; });
+      var msgs = [], nNeu = 0;
+      list.forEach(function (f) {
+        if (isKKCsv(f.text)) {
+          var dk = L.dedupeImport(state.kk, parseKK(f.text));
+          dk.added.forEach(function (t) { t.id = uid("kk"); state.kk.push(t); });
+          nNeu += dk.added.length; msgs.push("Kreditkarte: " + dk.added.length + " neu" + (dk.skipped ? ", " + dk.skipped + " schon da" : ""));
+        } else {
+          var g = L.parseSparkasseCsv(f.text);
+          if (!g.transactions.length) { msgs.push(f.name + ": " + (g.errors[0] || "keine Buchungen gefunden")); return; }
+          bankKategorien(f.text, g.transactions);
+          var dg = L.dedupeImport(state.transactions, g.transactions);
+          dg.added.forEach(function (t) { t.id = uid("tx"); t.manuelleKat = false; t.neu = true; state.transactions.push(t); });
+          var von = g.transactions.reduce(function (m, t) { return t.datum < m ? t.datum : m; }, "9999"), bis = g.transactions.reduce(function (m, t) { return t.datum > m ? t.datum : m; }, "");
+          nNeu += dg.added.length; msgs.push("Girokonto (" + dLabel(von) + von.slice(2, 4) + "–" + dLabel(bis) + bis.slice(2, 4) + "): " + dg.added.length + " neu" + (dg.skipped ? ", " + dg.skipped + " schon da" : "") + (dg.removedVorgemerkt.length ? ", " + dg.removedVorgemerkt.length + " Vormerkungen durch die endgültige Buchung ersetzt" : ""));
+        }
+      });
+      state.transactions.sort(function (a, b) { return a.datum < b.datum ? 1 : a.datum > b.datum ? -1 : 0; });
+      enrichEverything(); freezePast(state);
+      state.importAt = Date.now(); state.kontoEinzeln = false;
+      state.importLog.unshift({ at: Date.now(), text: msgs.join(" · ") }); state.importLog = state.importLog.slice(0, 20);
+      if (ui.modal && ui.modal.type === "kassensturz") { ui.modal.step = 2; ui.modal.importMsg = msgs.join("\n"); render(); }
+      else toast(msgs.join(" · ") || "Nichts importiert.");
+    }).catch(function (e) { toast("Import fehlgeschlagen: " + (e && e.message || e)); });
+  }
+  // Unsichtbare Dateiauswahl (liegt außerhalb von #app, damit das Neuzeichnen sie nicht löscht)
+  function fileInput(accept, multiple, onFiles) {
+    var el = document.createElement("input"); el.type = "file"; el.accept = accept; el.multiple = multiple; el.style.display = "none";
+    el.addEventListener("change", function () { if (el.files.length) onFiles(el.files); el.value = ""; });
+    document.body.appendChild(el); return el;
+  }
+  var csvIn = fileInput(".csv,.CSV,text/csv", true, importFiles);
+  var backupIn = fileInput(".json,application/json", false, function (files) {
+    files[0].text().then(function (txt) {
+      var o = JSON.parse(txt);
+      if (!o || !Array.isArray(o.transactions) || !Array.isArray(o.expected) || !o.fi) throw new Error("Das ist kein BoSal-Backup.");
+      o.modus = "echt"; o.kk = o.kk || []; o.importLog = o.importLog || [];
+      mark("Backup geladen"); Object.keys(state).forEach(function (k) { delete state[k]; }); Object.keys(o).forEach(function (k) { state[k] = o[k]; });
+      ui.modal = null; toast("Backup geladen: " + o.transactions.length + " Buchungen.");
+    }).catch(function (e) { toast("Backup nicht geladen: " + (e && e.message || e)); });
+  });
+  function exportBackup() {
+    var blob = new Blob([JSON.stringify(state, null, 1)], { type: "application/json" }), a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "bosal-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+
   /* ---------- Ausgaben: wofür ging mein Geld (mein Anteil) ---------- */
   function report(mk, share) {
-    var txs = state.transactions.filter(function (t) { return t.effMonat === mk; });
-    var rows = {}, info = { kk: 0, settled: 0, gespart: 0, geteilt: 0, fremd: 0 };
+    var txs = state.transactions.filter(function (t) { return t.effMonat === mk; })
+      .concat(state.kk.filter(function (t) { return t.effMonat === mk && !t.ausgleich; }));
+    var rows = {}, info = { kk: 0, kkDetail: !!kkMonths()[mk], settled: 0, gespart: 0, geteilt: 0, fremd: 0 };
     function addC(k, v) { rows[k] = (rows[k] || 0) + v; }
     txs.forEach(function (t) {
       if (t.betrag >= 0 || (t.match && !ui.inclFix)) return;            // Alltag; feste Posten nur auf Wunsch
@@ -363,11 +498,12 @@
   /* ================= Ansicht: Ausgaben ================= */
   function viewAusgaben() {
     if (ui.sortOpen) return viewSort();
-    var months = Object.keys(state.frozen).concat([state.active]).filter(function (m) { return state.transactions.some(function (t) { return t.effMonat === m; }); });
+    var kkm = kkMonths(), months = Object.keys(state.frozen).sort().concat([state.active]).filter(function (m) { return kkm[m] || state.transactions.some(function (t) { return t.effMonat === m; }); });
+    if (!months.length) return '<h1 class="page-t">Ausgaben</h1><div class="card"><h2>Noch keine Buchungen</h2><p class="muted">Importiere zuerst die CSV deines Girokontos (Monat → Kassensturz oder Mehr → CSV importieren).</p>' + btn("CSV importieren", "pickCsv", "", "btn-primary") + "</div>";
     if (!ui.repMonth || months.indexOf(ui.repMonth) === -1) ui.repMonth = months[months.length - 1];
     var mk = ui.repMonth, R = report(mk, ui.shareMode), Rf = report(mk, false);
     var max = R.list.reduce(function (m, r) { return Math.max(m, -r.betrag); }, 1);
-    var un = state.transactions.filter(function (t) { return t.effMonat === mk && isUnsorted(t); }).length;
+    var un = R.txs.filter(isUnsorted).length;
     var chips = '<div class="mstrip">' + months.map(function (m) {
       return '<button class="mchip' + (m === mk ? " on" : "") + '" data-act="repMonth" data-month="' + m + '"><span class="mchip-m">' + mLabel(m) + "</span></button>";
     }).join("") + "</div>";
@@ -382,31 +518,31 @@
     if (ui.shareMode && R.info.fremd) notes.push("+" + eur(R.info.fremd) + " von anderen für dich bezahlt");
     if (R.info.settled) notes.push(R.info.settled + " Rückzahlung(en) nicht als Ausgabe gezählt");
     if (R.info.gespart) notes.push(eur(R.info.gespart) + " gespart (Rücklage), nicht als Ausgabe gezählt");
-    if (R.info.kk) notes.push("Kreditkarten-Abrechnung " + eur(-R.info.kk) + " ausgeblendet · Details kommen später aus der Kreditkarten-CSV");
+    if (R.info.kk) notes.push("Kreditkarten-Abrechnung " + eur(-R.info.kk) + " ausgeblendet" + (R.info.kkDetail ? ". Die einzelnen Kartenzahlungen aus der Kreditkarten-CSV sind drin." : ". Für diesen Monat fehlt die Kreditkarten-CSV, die Kartenzahlungen fehlen deshalb."));
     var sumCard = '<div class="card"><div class="card-head"><h2>Wofür ging dein Geld im ' + mName(mk) + "?</h2>" + tog + "</div>" +
       '<div class="rep-total"><span class="num">' + eur(R.total) + '</span><span class="muted small">' + (ui.shareMode ? "dein Anteil · voll wären es " + eur(Rf.total) : "alle Buchungen voll gezählt") + "</span></div>" +
       fixTog + bars + (notes.length ? '<ul class="notes">' + notes.map(function (n) { return "<li>" + esc(n) + "</li>"; }).join("") + "</ul>" : "") +
       (un ? '<div class="sortcta">' + un + " Buchungen ohne Kategorie " + btn("Jetzt sortieren →", "sortOpen", "", "btn-primary btn-sm") + "</div>" : "") + "</div>";
     var txs = R.txs.filter(function (t) { return t.betrag < 0; }).sort(function (a, b) { return a.datum < b.datum ? 1 : -1; });
     var txCard = '<div class="card"><h2>Ausgaben-Buchungen <span class="cnt">' + txs.length + '</span></h2><p class="muted small">Mit anderen bezahlt? Auf „Teilen“ tippen, dann zählt nur dein Anteil und die Person steht unter „Mir geschuldet“.</p><ul class="txl">' +
-      txs.slice(0, 40).map(function (t) {
+      txs.slice(0, ui.txAll ? 999 : 40).map(function (t) {
         var c = cat(t.kategorieId), shared = state.offen.filter(function (o) { return o.art === "forderung" && o.txId === t.id; });
         var so = t.settles && state.offen.find(function (o) { return o.id === t.settles; });
         var it = t.match && state.expected.find(function (i) { return i.id === t.itemId; });
-        var tagTxt = isKK(t) ? "Kreditkarte" : so ? (so.art === "ruecklage" ? "Rücklage" : "erledigt: " + so.text) : isUnsorted(t) ? "Unsortiert" : c.name + (it ? " · fester Posten „" + it.beschreibung + "“" : "");
+        var tagTxt = isKK(t) ? "Kreditkarten-Abrechnung" : (t.konto === "kk" ? "Karte · " : "") + (so ? (so.art === "ruecklage" ? "Rücklage" : "erledigt: " + so.text) : isUnsorted(t) ? "Unsortiert" : c.name + (it ? " · fester Posten „" + it.beschreibung + "“" : ""));
         return '<li class="tx"><span class="tx-d">' + dLabel(t.datum) + '</span><span class="tx-main"><span class="tx-e">' + esc((t.empfaenger || "").split("/")[0]) + '</span><span class="tx-k"><i style="background:' + (isUnsorted(t) ? "var(--warn)" : c.farbe) + '"></i>' + esc(tagTxt) +
           (shared.length ? " · geteilt mit " + esc(shared.map(function (o) { return o.person; }).join(", ")) + ", dein Teil " + eur(t.betrag + shared.reduce(function (s, o) { return s + o.betrag; }, 0)) : "") + "</span></span>" +
           money(t.betrag) + (isKK(t) || so ? "<span></span>" : btn("Teilen", "teilen", ' data-t="' + t.id + '"', "btn-sm")) + "</li>";
-      }).join("") + "</ul></div>";
+      }).join("") + "</ul>" + (txs.length > 40 && !ui.txAll ? btn("Alle " + txs.length + " zeigen", "txAll", "", "btn-sm") : "") + "</div>";
     var past = Object.keys(state.frozen).sort().reverse();
     var hist2 = '<div class="card"><h2>Abgeschlossene Monate</h2><ul class="mini-list">' + past.map(function (m) {
       return '<li><button class="linkrow" data-act="repMonth" data-month="' + m + '">' + mLabel(m, true) + "</button>" + money(state.frozen[m]) + "</li>";
-    }).join("") + '</ul><p class="muted small">Endstand beim Abschluss.</p></div>';
+    }).join("") + '</ul><p class="muted small">Endstand beim Monatsstart. Für importierte Monate davor: Einnahmen minus Ausgaben laut Kontoauszug (Überweisungen aufs Tagesgeld zählen als Ausgabe).</p></div>';
     return '<h1 class="page-t">Ausgaben</h1>' + chips + '<div class="grid-a">' + sumCard + '<div class="col">' + txCard + hist2 + "</div></div>";
   }
 
   function viewSort() {
-    var list = state.transactions.filter(function (t) { return t.effMonat === ui.repMonth && isUnsorted(t) && !ui.skipped[t.id]; }).sort(function (a, b) { return a.betrag - b.betrag; });
+    var list = state.transactions.concat(state.kk.filter(function (t) { return !t.ausgleich; })).filter(function (t) { return t.effMonat === ui.repMonth && isUnsorted(t) && !ui.skipped[t.id]; }).sort(function (a, b) { return a.betrag - b.betrag; });
     var top = '<div class="mhead"><h1 class="page-t">Sortieren · ' + mLabel(ui.repMonth, true) + "</h1>" + btn("← Zurück", "sortClose", "", "") + "</div>";
     if (!list.length) return top + '<div class="card"><h2>Alles sortiert 🎉</h2></div>';
     var t = list[0], kw = ((t.empfaenger || "").split(/[\/,]|\s{2,}/)[0] || "").trim().toLowerCase().slice(0, 28);
@@ -424,8 +560,28 @@
   }
   function viewZukunft() { return window.BoSalZukunft.render(zctx()); }
   function viewMehr() {
-    var items = ["Kontoauszug importieren (Giro- und Kreditkarten-CSV)", "Feste Posten & Kategorien", "Hauskauf · Kinder", "Backup & Einstellungen"];
-    return '<h1 class="page-t">Mehr</h1><div class="card" style="margin-bottom:var(--gap)">' + palettePicker() + '</div><div class="card"><ul class="mehr-list">' + items.map(function (i) { return '<li><button class="mehr-btn" data-act="todo"><span class="mehr-t">' + i + '</span><span aria-hidden="true">→</span></button></li>'; }).join("") + "</ul></div>";
+    var echt = state.modus === "echt", g = state.transactions;
+    var von = g.length ? g.reduce(function (m, t) { return t.datum < m ? t.datum : m; }, "9999") : null, bis = g.length ? g.reduce(function (m, t) { return t.datum > m ? t.datum : m; }, "") : null;
+    var daten = '<div class="card"><h2>Deine Daten</h2>' + (echt ?
+      '<ul class="mini-list"><li><span>Girokonto</span><span>' + g.length + " Buchungen" + (von ? " · " + dLabel(von) + von.slice(0, 4) + " bis " + dLabel(bis) + bis.slice(0, 4) : "") + "</span></li>" +
+      "<li><span>Kreditkarte</span><span>" + state.kk.length + " Buchungen</span></li>" +
+      "<li><span>Letzter Import</span><span>" + (state.importLog[0] ? tLabel(state.importLog[0].at) : "noch keiner") + "</span></li></ul>" +
+      (saveErr ? '<p class="note">Speichern hat nicht geklappt: ' + esc(saveErr) + ". Bitte ein Backup speichern.</p>" : '<p class="muted small">Gespeichert in diesem Browser auf diesem Gerät. Andere Geräte sehen diese Daten nicht.</p>') +
+      '<div class="btn-row">' + btn("CSV importieren", "pickCsv", "", "btn-primary") + btn("Backup speichern", "exportBackup", "", "") + btn("Backup laden", "loadBackup", "", "") + btn("Alles löschen", "resetAll", "", "btn-ghost") + "</div>"
+      : '<p class="muted">Du siehst gerade Beispieldaten. Nichts davon wird gespeichert.</p><div class="btn-row">' + btn("Mit meinen Daten starten", "startEcht", "", "btn-primary") + btn("Backup laden", "loadBackup", "", "") + "</div>") + "</div>";
+    var typOpt = function (v) { return ["Einnahme", "Fixkosten", "Schulden"].map(function (t) { return '<option' + (t === v ? " selected" : "") + ">" + t + "</option>"; }).join(""); };
+    var fp = '<div class="card"><div class="card-head"><h2>Feste Posten</h2>' + btn("＋ Posten", "fpAdd", "", "btn-sm") + "</div>" +
+      '<p class="muted small">Der Suchbegriff erkennt die Buchung im Kontoauszug (steht im Empfänger oder Verwendungszweck). Stichtag: Buchungen ab diesem Tag zählen schon für den nächsten Monat, z. B. Gehalt am 25. Rechts siehst du, was zuletzt erkannt wurde.</p>' +
+      '<div class="vt-wrap"><table class="fp-tbl"><thead><tr><th>aktiv</th><th>Name</th><th>Typ</th><th class="r">Betrag / Monat</th><th>Suchbegriff</th><th>Stichtag</th><th>zuletzt erkannt</th><th></th></tr></thead><tbody>' +
+      state.expected.map(function (it) {
+        var hits = g.filter(function (t) { return t.itemId === it.id; }), last = hits[0];
+        var inp = function (f, v, cls) { return '<input class="' + (cls || "") + '" data-act="fp" data-id="' + it.id + '" data-f="' + f + '" value="' + esc(v) + '">'; };
+        return '<tr class="' + (it.aktiv ? "" : "off") + '"><td><input type="checkbox" data-act="fp" data-id="' + it.id + '" data-f="aktiv"' + (it.aktiv ? " checked" : "") + "></td><td>" + inp("beschreibung", it.beschreibung) + '</td><td><select data-act="fp" data-id="' + it.id + '" data-f="typ">' + typOpt(it.typ) + "</select></td>" +
+          '<td class="r">' + inp("betrag", fmt.format(it.betrag), "in-num") + "</td><td>" + inp("suchbegriff", it.suchbegriff || "") + "</td><td>" + inp("stichtag", it.stichtag || 0, "in-num fp-day") + "</td>" +
+          '<td class="small">' + (last ? dLabel(last.datum) + last.datum.slice(2, 4) + " · " + eur(last.betrag) + '<br><span class="muted">' + hits.length + "× in " + new Set(hits.map(function (t) { return t.monat; })).size + " Monaten</span>" : '<span class="' + (g.length ? "neg" : "muted") + '">' + (g.length ? "nie erkannt" : "–") + "</span>") + "</td>" +
+          "<td>" + btn("✕", "fpDel", ' data-id="' + it.id + '"', "btn-sm btn-ghost") + "</td></tr>";
+      }).join("") + "</tbody></table></div></div>";
+    return '<h1 class="page-t">Mehr</h1><div class="z-stack">' + daten + fp + '<div class="card">' + palettePicker() + "</div></div>";
   }
 
   /* ================= Dialoge ================= */
@@ -436,11 +592,19 @@
       var vs = vorschlaege();
       body = "<h2>Kassensturz · " + mLabel(state.active, true) + "</h2><p class=\"muted\">Beides zusammen, damit nichts doppelt zählt.</p>" +
         '<ol class="steps"><li class="' + (state.importAt && m.step > 1 ? "done" : "") + '"><b>1 · Kontoauszug importieren</b>' +
-        (m.step === 1 ? '<p class="muted small">Im echten Tool ziehst du hier die CSV der Sparkasse hinein.</p>' + btn("Beispiel-Import laden", "doImport", "", "btn-primary") : '<p class="muted small">' + esc(m.importMsg || "") + "</p>") + "</li>" +
+        (m.step === 1 ? (state.modus === "echt" ? '<p class="muted small">Sparkasse → Umsätze → Export → <b>CSV-CAMT</b>. Die Kreditkarten-CSV kannst du gleich mit auswählen (nur für „Ausgaben“).</p>' + btn("CSV-Dateien auswählen", "pickCsv", "", "btn-primary") + btn("Heute ohne Import", "skipImport", "", "btn-ghost")
+          : '<p class="muted small">Beispieldaten: Hier lädt ein Beispiel-Import.</p>' + btn("Beispiel-Import laden", "doImport", "", "btn-primary")) : '<p class="muted small">' + esc(m.importMsg || "").replace(/\n/g, "<br>") + "</p>") + "</li>" +
         '<li class="' + (m.step < 2 ? "dim" : "") + '"><b>2 · Kontostände von jetzt eintragen</b>' + (m.step >= 2 ? '<div class="konten">' +
           kontoField("giro", "Girokonto", state.konten.giro) + kontoField("konto2", "2. Konto", state.konten.konto2) + kontoField("kk", "Kreditkarte (offen, negativ)", state.konten.kk) + "</div>" : "") + "</li></ol>" +
         '<div class="m-foot">' + btn("Abbrechen", "closeModal", "", "btn-ghost") + (m.step >= 2 ? btn("Fertig", "finishKS", "", "btn-primary") : "") + "</div>";
       if (m.step >= 2 && vs.length) body = body.replace("</ol>", '<li><b>3 · Danach</b><p class="muted small">' + vs.length + " Buchung(en) passen zu offenen Posten. Du bestätigst sie gleich auf der Monatsseite.</p></li></ol>");
+    }
+    if (m.type === "welcome") {
+      body = "<h2>Willkommen bei BoSal</h2><p class=\"muted\">Testversion. Du kannst sie mit deinen echten Daten ausprobieren.</p><ul class=\"startlist\">" +
+        "<li><b>Mit deinen Daten:</b> Du importierst die CSV deines Girokontos (und der Kreditkarte) und trägst deine Kontostände ein. Alles bleibt nur in diesem Browser auf diesem Gerät, nichts geht ins Internet.</li>" +
+        "<li><b>Beispieldaten:</b> zum Ausprobieren. Es wird nichts gespeichert.</li>" +
+        "<li>Sichern: Mehr → Backup speichern. Löscht dein Browser seine Daten, ist sonst alles weg.</li></ul>" +
+        '<div class="m-foot">' + btn("Beispieldaten ansehen", "closeModal", "", "btn-ghost") + btn("Mit meinen Daten starten", "startEcht", "", "btn-primary") + "</div>";
     }
     if (m.type === "start") {
       var R = rechnung(), nx = L.nextMonth(state.active);
@@ -463,7 +627,7 @@
         '<div class="m-foot">' + btn("Abbrechen", "closeModal", "", "btn-ghost") + btn("Zurück zu " + mName(pc.mk), "doReopen", "", "btn-primary") + "</div>";
     }
     if (m.type === "teilen") {
-      var t = state.transactions.find(function (x) { return x.id === m.t; });
+      var t = txById(m.t);
       body = "<h2>Buchung teilen</h2><p class=\"muted\">" + esc(t.empfaenger) + " · " + eur(t.betrag) + "</p>" +
         '<div class="form"><label class="grow"><span>Mit wem?</span><input id="s-person" placeholder="z. B. Anna"></label>' +
         '<label><span>Ihr/sein Anteil</span><input id="s-betrag" class="in-num" inputmode="decimal" value="' + fmt.format(Math.abs(t.betrag) / 2) + '"></label></div>' +
@@ -506,10 +670,11 @@
     document.getElementById("app").innerHTML =
       '<header class="top"><div class="brand"><span class="brand-mark" aria-hidden="true"></span>BoSal</div><div class="top-r"><button class="ur" data-act="undo"' + (hist.past.length ? ' title="Rückgängig: ' + esc(hist.past[hist.past.length - 1].label) + '"' : " disabled") + ' aria-label="Rückgängig">↶</button>' +
       '<button class="ur" data-act="redo"' + (hist.future.length ? ' title="Wiederholen: ' + esc(hist.future[hist.future.length - 1].label) + '"' : " disabled") + ' aria-label="Wiederholen">↷</button>' +
-      '<button class="ur" data-act="palOpen" aria-label="Farbpalette">🎨</button><span class="top-date">Entwurf 16</span>' + (ui.palOpen ? palettePicker() : "") + "</div></header>" +
+      '<button class="ur" data-act="palOpen" aria-label="Farbpalette">🎨</button>' + (state.modus === "echt" ? '<span class="top-date">Testversion · deine Daten</span>' : '<button class="mode-b" data-act="welcome">Beispieldaten · eigene Daten nutzen</button>') + '' + (ui.palOpen ? palettePicker() : "") + "</div></header>" +
       '<nav class="nav" aria-label="Bereiche">' + nav + '</nav><main class="main">' + RENDER[ui.view]() + "</main>" + modal() +
       (ui.toast ? '<div class="toast" role="status">' + esc(ui.toast) + "</div>" : "");
     window.scrollTo(0, y);
+    save();
   }
   function toast(msg) { ui.toast = msg; render(); clearTimeout(toast._t); toast._t = setTimeout(function () { ui.toast = null; render(); }, 3000); }
 
@@ -552,7 +717,17 @@
     }
     if (a === "delTransfer") { mark("Verschiebung gelöscht"); state.transfers = state.transfers.filter(function (t) { return t.id !== d.id; }); render(); return; }
     if (a === "closeModal") { ui.modal = null; render(); return; }
-    if (a === "kassensturz") { ui.modal = { type: "kassensturz", step: state.demoImported ? 2 : 1 }; render(); return; }
+    if (a === "kassensturz") { ui.modal = { type: "kassensturz", step: state.modus === "demo" && state.demoImported ? 2 : 1 }; render(); return; }
+    if (a === "pickCsv") { if (state.modus !== "echt") { ui.modal = { type: "welcome" }; render(); return; } csvIn.click(); return; }
+    if (a === "skipImport") { ui.modal.step = 2; ui.modal.importMsg = "Ohne neuen Import. Bereits abgebuchte Fixkosten, die noch nicht importiert sind, zählen doppelt."; render(); return; }
+    if (a === "startEcht") { state = makeState("echt"); hist.past = []; hist.future = []; ui.view = "monat"; ui.modal = { type: "kassensturz", step: 1 }; render(); return; }
+    if (a === "welcome") { ui.modal = { type: "welcome" }; render(); return; }
+    if (a === "exportBackup") { exportBackup(); toast("Backup wird gespeichert (Ordner Downloads)."); return; }
+    if (a === "loadBackup") { backupIn.click(); return; }
+    if (a === "resetAll") { if (!window.confirm("Wirklich alle deine Daten in diesem Browser löschen? Speichere vorher ein Backup.")) return; try { localStorage.removeItem(STORE); } catch (er) {} state = makeState("demo"); hist.past = []; hist.future = []; ui.view = "monat"; ui.modal = { type: "welcome" }; render(); return; }
+    if (a === "txAll") { ui.txAll = true; render(); return; }
+    if (a === "fpAdd") { mark("Fester Posten hinzugefügt"); state.expected.push({ id: uid("exp"), beschreibung: "Neuer Posten", typ: "Fixkosten", betrag: -10, suchbegriff: "", stichtag: 0, notiz: "", aktiv: true, kategorieId: "vertraege" }); enrichEverything(); render(); return; }
+    if (a === "fpDel") { var fx = state.expected.find(function (x) { return x.id === d.id; }); if (!window.confirm("„" + fx.beschreibung + "“ löschen?")) return; mark("Fester Posten gelöscht"); state.expected = state.expected.filter(function (x) { return x.id !== d.id; }); enrichEverything(); render(); return; }
     if (a === "doImport") { mark("Import"); var n = demoImport(); state.importAt = Date.now(); state.kontoEinzeln = false; ui.modal.step = 2; ui.modal.importMsg = n ? n + " neue Buchungen importiert." : "Import ist schon drin."; render(); return; }
     if (a === "finishKS") { if (state.konten.giro == null) { toast("Bitte mindestens das Girokonto eintragen."); return; } state.kontoAt = Date.now(); state.kontoEinzeln = false; if (!state.importAt) state.importAt = Date.now(); ui.modal = null; ui.view = "monat"; toast("Kassensturz gespeichert."); return; }
     if (a === "startNext") { ui.modal = { type: "start" }; render(); return; }
@@ -588,11 +763,11 @@
     if (a === "del") { mark("gelöscht"); state.offen = state.offen.filter(function (x) { return x.id !== d.o; }); toast("Gelöscht."); return; }
     if (a === "toggleDone") { ui.showDone = !ui.showDone; render(); return; }
     if (a === "report") { ui.view = "ausgaben"; ui.repMonth = d.month; render(); return; }
-    if (a === "repMonth") { ui.repMonth = d.month; render(); return; }
+    if (a === "repMonth") { ui.repMonth = d.month; ui.txAll = false; render(); return; }
     if (a === "share") { ui.shareMode = d.v === "1"; render(); return; }
     if (a === "teilen") { ui.modal = { type: "teilen", t: d.t }; render(); return; }
     if (a === "doTeilen") {
-      var tt = state.transactions.find(function (x) { return x.id === d.t; }), per = document.getElementById("s-person").value.trim(), bt = parseNum(document.getElementById("s-betrag").value);
+      var tt = txById(d.t), per = document.getElementById("s-person").value.trim(), bt = parseNum(document.getElementById("s-betrag").value);
       if (!per || isNaN(bt) || bt <= 0) { toast("Bitte Person und Anteil eintragen."); return; }
       mark("Buchung geteilt");
       state.offen.push({ id: uid("o"), art: "forderung", text: (tt.empfaenger || "").split("/")[0] + " (Anteil)", betrag: bt, person: per, kat: tt.kategorieId, txId: tt.id, seit: state.active });
@@ -602,11 +777,11 @@
     if (a === "sortClose") { ui.sortOpen = false; render(); return; }
     if (a === "skip") { ui.skipped[d.t] = true; render(); return; }
     if (a === "sort") {
-      var st = state.transactions.find(function (x) { return x.id === d.t; }), before = state.transactions.filter(isUnsorted).length;
+      var st = txById(d.t), allTx = function () { return state.transactions.concat(state.kk).filter(isUnsorted).length; }, before = allTx();
       mark("sortiert"); st.kategorieId = d.cat; st.manuelleKat = true;
       var al = document.getElementById("always"), kw = document.getElementById("kw").value.trim().toLowerCase();
-      if (al && al.checked && kw.length >= 3) { var c = state.categories.find(function (x) { return x.id === d.cat; }); if (c.keywords.indexOf(kw) === -1) c.keywords.push(kw); L.enrichAll(state); }
-      var extra = before - 1 - state.transactions.filter(isUnsorted).length;
+      if (al && al.checked && kw.length >= 3) { var c = state.categories.find(function (x) { return x.id === d.cat; }); if (c.keywords.indexOf(kw) === -1) c.keywords.push(kw); enrichEverything(); }
+      var extra = before - 1 - allTx();
       toast("→ " + cat(d.cat).name + (extra > 0 ? " · " + extra + " weitere mitsortiert" : "")); return;
     }
     if (a === "todo") { toast("Kommt im echten Umbau."); return; }
@@ -619,6 +794,16 @@
     if (el.dataset.act === "customColor") { ui.custom = el.value; ui.palette = "eigene"; try { localStorage.setItem("bosal.custom", el.value); localStorage.setItem("bosal.palette", "eigene"); } catch (er) {} render(); return; }
     if (el.dataset.act === "zYear") return;
     if (window.BoSalZukunft && window.BoSalZukunft.change(zctx(), el)) { renderAfterChange(el); return; }
+    if (el.dataset.act === "fp") {
+      var it = state.expected.find(function (x) { return x.id === el.dataset.id; }), f = el.dataset.f;
+      mark("„" + it.beschreibung + "“ geändert");
+      if (f === "aktiv") it.aktiv = el.checked;
+      else if (f === "betrag") { var nb = parseNum(el.value); if (!isNaN(nb)) it.betrag = it.typ === "Einnahme" ? Math.abs(nb) : -Math.abs(nb); }
+      else if (f === "stichtag") { var sd = parseInt(el.value, 10); it.stichtag = isNaN(sd) ? 0 : Math.max(0, Math.min(31, sd)); }
+      else if (f === "typ") { it.typ = el.value; it.betrag = it.typ === "Einnahme" ? Math.abs(it.betrag) : -Math.abs(it.betrag); it.kategorieId = it.typ === "Einnahme" ? "gehalt" : it.typ === "Schulden" ? "schulden" : (it.kategorieId === "gehalt" ? "vertraege" : it.kategorieId); }
+      else it[f] = el.value.trim();
+      enrichEverything(); renderAfterChange(el); return;
+    }
     if (el.dataset.act === "inclFix") { ui.inclFix = el.checked; render(); return; }
     if (el.dataset.act === "ovr") {
       var it = state.expected.find(function (x) { return x.id === el.dataset.id; }), n = parseNum(el.value);

@@ -20,7 +20,7 @@
 (function (root) {
   "use strict";
   var ORDER = { auto: ["ng", "etf", "hek"], etf: ["etf"], ng: ["ng"], hek: ["hek"], kind: ["kind"] };
-  var ALLOC = ["etfMin", "lebensqual", "sonder", "auto", "kredit", "kind", "hausEk", "notgroschen", "etfRest", "unverplant"];
+  var ALLOC = ["etfMin", "lebensqual", "sonder", "auto", "kredit", "kind", "notgroschen", "hausEk", "etfRest", "unverplant"];
   function mRate(p) { return Math.pow(1 + (p || 0), 1 / 12) - 1; }
   function ymNum(s) { if (!s) return null; var p = String(s).split("-"); return +p[0] * 12 + (+p[1] - 1); }   // "2027-03" → Monatszahl
 
@@ -80,8 +80,8 @@
         else if (!pausiert) {
           if (pausiertStart) al.etfMin = take(a.etfMindest);               // Kredit in diesem Monat getilgt: wieder normal sparen
           al.kind = take(a.kindSparrate);
+          al.notgroschen = S.ng < a.notgroschenZiel ? take(Math.min(a.notgroschenRate, a.notgroschenZiel - S.ng)) : 0;   // Notgroschen vor Haus-EK
           al.hausEk = (!hekGekauft && S.hek < a.hausEkZiel) ? take(Math.min(a.hausEkRate, a.hausEkZiel - S.hek)) : 0;
-          al.notgroschen = S.ng < a.notgroschenZiel ? take(Math.min(a.notgroschenRate, a.notgroschenZiel - S.ng)) : 0;
           al.etfRest = Math.max(0, budget);
         }
 
