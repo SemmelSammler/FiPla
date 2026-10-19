@@ -150,3 +150,14 @@ body { padding-top: 0; }
 .fp-tbl .in-num { text-align: right; }
 .fp-tbl .fp-day { width: 56px; }
 .fp-tbl tr.off td { opacity: .5; }
+.fp-tbl .fp-mon { width: 90px; }
+.fp-tbl .fp-note { margin-top: 3px; max-width: 260px; white-space: normal; }
+.fp-tbl tr.platz td { background: color-mix(in srgb, var(--warn) 7%, transparent); }
+.fp-tbl { min-width: 1420px; }
+.fp-tbl select { min-width: 118px; }
+.fp-tbl td:nth-child(2) input { min-width: 190px; }
+.fp-tbl td:nth-child(10) input { min-width: 150px; }
+.fp-tbl td:nth-child(4) input { min-width: 96px; }
+.fp-tbl td:nth-child(12) { min-width: 120px; }
+.fp-tbl td:nth-child(7) input { width: 76px; }
+.fp-tbl td:nth-child(6) input { width: 104px; }

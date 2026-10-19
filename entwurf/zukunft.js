@@ -30,14 +30,14 @@
   // Welche festen Posten zählen für die Zukunft (gespeichert, neue Posten zählen automatisch)
   function picked(c, i) { var p = c.state.fi.pick; return !p || p[i.id] !== false; }
   function monthValues(c, a) {
-    var mk = zu.src || c.state.active;
+    var mk = zu.src || c.L.nextMonth(c.state.active);   // Standard: nächster Monat, ohne Besonderheiten des laufenden
     var items = c.state.expected.filter(function (i) { return i.aktiv && i.typ !== "Schulden"; });
     // Geteilte Kosten: Einnahmen „Anteil von anderen“ sind kein Gehalt, sie senken deine geteilten Fixkosten
     items.forEach(function (i) {
       if (i.typ === "Einnahme" && i.anteilVon == null) i.anteilVon = /anteil/i.test(i.beschreibung);
       if (i.typ === "Fixkosten" && i.geteilt == null) i.geteilt = /miete|strom|internet|gas\b|wasser|nebenkosten|rundfunk/i.test(i.beschreibung);
     });
-    var on = items.filter(function (i) { return picked(c, i); }), v = function (i) { return c.sollOf(mk, i); };
+    var on = items.filter(function (i) { return picked(c, i); }), v = function (i) { return i.typ === "Einnahme" ? c.sollOf(mk, i) : c.proMonat(mk, i); };
     var sum = function (l) { return Math.round(l.reduce(function (s, i) { return s + Math.abs(v(i)); }, 0) * 100) / 100; };
     var lohn = sum(on.filter(function (i) { return i.typ === "Einnahme" && !i.anteilVon; })), erst = sum(on.filter(function (i) { return i.typ === "Einnahme" && i.anteilVon; }));
     var geteilt = sum(on.filter(function (i) { return i.typ === "Fixkosten" && i.geteilt; })), allein = sum(on.filter(function (i) { return i.typ === "Fixkosten" && !i.geteilt; }));
@@ -307,7 +307,9 @@
   function fromMonth(c, a) {
     var src = c.state.fi, mv = monthValues(c, a), months = c.months(), eur = c.eur;
     function line(i, tag) {
-      var val = Math.abs(c.sollOf(mv.mk, i));
+      var val = Math.abs(i.typ === "Einnahme" ? c.sollOf(mv.mk, i) : c.proMonat(mv.mk, i));
+      var info = [i.anteil != null && i.anteil < 1 ? "dein Anteil " + Math.round(i.anteil * 100) + " %" : "", i.rhythmus && i.rhythmus !== "monatlich" ? i.rhythmus + " " + c.eur(Math.abs(i.betrag)) : "", i.platzhalter ? "Platzhalter" : ""].filter(Boolean).join(" · ");
+      tag = (tag || "") + (info ? '<em class="fm-info">' + info + "</em>" : "");
       return '<div class="fm-i' + (picked(c, i) ? "" : " off") + '"><input type="checkbox" data-act="zPick" data-id="' + i.id + '"' + (picked(c, i) ? " checked" : "") + ' aria-label="mitrechnen"> <span>' + c.esc(i.beschreibung) + "</span>" + (tag || "") + '<span class="num muted">' + eur(val) + "</span></div>";
     }
     function sw(i, k, labelOn, labelOff) { return '<button class="fm-tag' + (i[k] ? " on" : "") + '" data-act="zTag" data-id="' + i.id + '" data-k="' + k + '" title="umschalten">' + (i[k] ? labelOn : labelOff) + "</button>"; }

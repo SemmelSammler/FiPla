@@ -17,6 +17,9 @@
   var AKTUELL = { "exp-01": 3427.74, "exp-02": 538, "exp-03": -1003.01, "exp-04": -500, "exp-06": -72, "exp-07": -86.89, "exp-10": -24.99, "exp-12": -21.99, "exp-13": -21.7, "exp-15": -8.99, "exp-17": -2.99, "exp-18": -300 };
   // Genauere Suchbegriffe für echte Kontoauszüge: Reisekosten-Erstattungen sind kein Gehalt, nicht jede Überweisung von Laura ist Miete
   var SUCH_ECHT = { "exp-01": "lohn - gehalt", "exp-02": "miete" };
+  // Deine Fixkosten ab November 2026 (aus deiner Fixkosten-CSV). Betrag = Zahlbetrag je Fälligkeit, gesamt
+  var FIX_ECHT = [{"id": "fx-miete", "beschreibung": "Miete", "typ": "Fixkosten", "betrag": -1007.27, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "dmb zwei", "stichtag": 0, "notiz": "Ab 11/26 1.007,27 € laut SEPA-Mandatsankündigung vom 19.10.26 (vorher 1.003,01 €). Laura erstattet ca. 538 €/Monat.", "kategorieId": "wohnen", "geteilt": true}, {"id": "fx-strom_gas", "beschreibung": "Strom/Gas-Abschlag", "typ": "Fixkosten", "betrag": -72, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "stadtwerke bochum", "stichtag": 0, "notiz": "Seit 05/26 72 € (vorher 76 €).", "kategorieId": "wohnen", "geteilt": true}, {"id": "fx-rundfunk", "beschreibung": "Rundfunkbeitrag", "typ": "Fixkosten", "betrag": -55.08, "anteil": 0.5, "rhythmus": "quartalsweise", "monate": [3, 6, 9, 12], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "rundfunk", "stichtag": 0, "notiz": "Hälftig mit Laura geteilt.", "kategorieId": "wohnen", "geteilt": false}, {"id": "fx-kfw", "beschreibung": "KfW-Studienkredit", "typ": "Schulden", "betrag": -500, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "kreditanstalt", "stichtag": 0, "notiz": "Zinsanteil sinkt monatlich (Okt 83,47 €), Rest Tilgung.", "kategorieId": "schulden", "geteilt": false}, {"id": "fx-essen", "beschreibung": "Haushaltsgeld Essen", "typ": "Fixkosten", "betrag": -300, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Dauerauftrag", "kk": false, "suchbegriff": "laura kruse", "stichtag": 0, "notiz": "Seit 06/26 300 € (vorher 250 €).", "kategorieId": "lebensmittel", "geteilt": false}, {"id": "fx-telekom", "beschreibung": "Festnetz/Internet", "typ": "Fixkosten", "betrag": -86.89, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "telekom deutschland", "stichtag": 0, "notiz": "Seit 04/26 +30 € gegenüber 56,89 € – Tarif prüfen.", "kategorieId": "vertraege", "geteilt": true}, {"id": "fx-klarmobil", "beschreibung": "Mobilfunk", "typ": "Fixkosten", "betrag": -24.99, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "klarmobil", "stichtag": 0, "notiz": "Grundpreis, Zusatzverbrauch möglich.", "kategorieId": "vertraege", "geteilt": false}, {"id": "fx-dticket", "beschreibung": "Deutschlandticket", "typ": "Fixkosten", "betrag": -63, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "abo 682318536", "stichtag": 0, "notiz": "", "kategorieId": "mobilitaet", "geteilt": false}, {"id": "fx-rechtsschutz", "beschreibung": "Rechtsschutzversicherung", "typ": "Fixkosten", "betrag": -341.9, "anteil": 0.5, "rhythmus": "jährlich", "monate": [6], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "rechtsschutz", "stichtag": 0, "notiz": "Hälftig mit Laura geteilt.", "kategorieId": "versicherung", "geteilt": false}, {"id": "fx-barmenia", "beschreibung": "Zusatz-Krankenversicherung", "typ": "Fixkosten", "betrag": -21.7, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "barmenia", "stichtag": 0, "notiz": "", "kategorieId": "versicherung", "geteilt": false}, {"id": "fx-fielmann", "beschreibung": "Brillenversicherung (Nulltarif)", "typ": "Fixkosten", "betrag": -10, "anteil": 1, "rhythmus": "jährlich", "monate": [1], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "nulltarifversicherung", "stichtag": 0, "notiz": "", "kategorieId": "versicherung", "geteilt": false}, {"id": "fx-bu", "beschreibung": "Berufsunfähigkeitsversicherung", "typ": "Fixkosten", "betrag": -70, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": true, "aktiv": true, "zahlweg": "offen", "kk": false, "suchbegriff": "", "stichtag": 0, "notiz": "Platzhalter – Anbieter und Beginn noch offen.", "kategorieId": "versicherung", "geteilt": false}, {"id": "fx-spotify", "beschreibung": "Spotify", "typ": "Fixkosten", "betrag": -21.99, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "PayPal", "kk": false, "suchbegriff": "spotify", "stichtag": 0, "notiz": "Letzte Abbuchung 08/26 nur 13,48 € – Tarif prüfen.", "kategorieId": "abos", "geteilt": false}, {"id": "fx-claude", "beschreibung": "Claude Pro", "typ": "Fixkosten", "betrag": -21.42, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Kreditkarte", "kk": true, "suchbegriff": "anthropic", "stichtag": 0, "notiz": "", "kategorieId": "abos", "geteilt": false}, {"id": "fx-urban_sports", "beschreibung": "Urban Sports Club", "typ": "Fixkosten", "betrag": -50, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": true, "aktiv": true, "zahlweg": "offen", "kk": false, "suchbegriff": "urban sports", "stichtag": 0, "notiz": "Platzhalter – Tarif noch offen. Am 01.08.26 0,01 € Kartenprüfung über Kreditkarte.", "kategorieId": "gesundheit", "geteilt": false}, {"id": "fx-prime", "beschreibung": "Amazon Prime", "typ": "Fixkosten", "betrag": -8.99, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "amznprime", "stichtag": 0, "notiz": "", "kategorieId": "abos", "geteilt": false}, {"id": "fx-steuer", "beschreibung": "Steuersoftware", "typ": "Fixkosten", "betrag": -35.99, "anteil": 1, "rhythmus": "jährlich", "monate": [12], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "buhl-data", "stichtag": 0, "notiz": "Vermutlich WISO Steuer – prüfen, ob Abo oder Einzelkauf.", "kategorieId": "abos", "geteilt": false}, {"id": "fx-icloud", "beschreibung": "iCloud (an Laura)", "typ": "Fixkosten", "betrag": -2.99, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Dauerauftrag", "kk": false, "suchbegriff": "icloud", "stichtag": 0, "notiz": "", "kategorieId": "abos", "geteilt": false}, {"id": "fx-microsoft", "beschreibung": "Microsoft (Speicher?)", "typ": "Fixkosten", "betrag": -2, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "PayPal", "kk": false, "suchbegriff": "microsoft payments", "stichtag": 0, "notiz": "Vermutlich Microsoft 365 Basic.", "kategorieId": "abos", "geteilt": false}, {"id": "fx-konto", "beschreibung": "Kontoführung", "typ": "Fixkosten", "betrag": -11, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Kontobelastung", "kk": false, "suchbegriff": "entgeltabrechnung", "stichtag": 0, "notiz": "", "kategorieId": "vertraege", "geteilt": false}];
+  var FIX_OVR = { mk: "2026-10", ovr: {"fx-miete": -1003.01} };   // Oktober: Miete noch zum alten Betrag bezahlt
   function makeState(modus) {
     var demo = modus === "demo";
     var st = {
@@ -36,6 +39,10 @@
     };
     st.expected = st.expected.filter(function (i) { return AKTUELL[i.id] != null; });
     st.expected.forEach(function (i) { i.betrag = AKTUELL[i.id]; if (!demo && SUCH_ECHT[i.id]) i.suchbegriff = SUCH_ECHT[i.id]; });
+    if (!demo) {
+      st.expected = st.expected.filter(function (i) { return i.typ === "Einnahme"; }).concat(clone(FIX_ECHT));
+      if (st.active === FIX_OVR.mk) st.overrides[FIX_OVR.mk] = clone(FIX_OVR.ovr);
+    }
     L.enrichAll(st);
     freezePast(st);
     if (demo) {
@@ -125,7 +132,8 @@
     return null;
   }
   function enrichEverything() {
-    L.enrichAll(state); state.kk.forEach(function (t) { L.enrichTx(t, [], state.categories); });
+    var kkItems = state.expected.filter(function (i) { return i.kk; }), giroItems = state.expected.filter(function (i) { return !i.kk; });
+    L.enrichAll({ transactions: state.transactions, expected: giroItems, categories: state.categories }); state.kk.forEach(function (t) { L.enrichTx(t, kkItems, state.categories); });
     state.transactions.concat(state.kk).forEach(function (t) {
       if (t.manuelleKat || t.match || t.kategorieId !== "sys-ausgabe") return;
       var k = t.konto === "kk" ? mccKat(t.mcc) : BANK_KAT[t.bankKat];
@@ -135,8 +143,22 @@
   function kkMonths() { var m = {}; state.kk.forEach(function (t) { m[t.effMonat] = true; }); return m; }
   function isUnsorted(t) { return t.betrag < 0 && !t.match && t.kategorieId === "sys-ausgabe" && !t.settles && !isKK(t); }
 
-  function sollOf(mk, item) { var o = state.overrides[mk]; return o && o[item.id] != null ? o[item.id] : item.betrag; }
-  function adj(mk, rows) { return rows.map(function (r) { return { item: r.item, ist: r.ist, soll: sollOf(mk, r.item), std: r.item.betrag }; }); }
+  // Planwert eines festen Postens in einem Monat: Abweichung für diesen Monat, sonst Betrag, wenn er in diesem Monat fällig ist
+  function faellig(mk, item) { return !item.rhythmus || item.rhythmus === "monatlich" || (item.monate || []).indexOf(+mk.slice(5, 7)) !== -1; }
+  function sollOf(mk, item) {
+    var o = state.overrides[mk]; if (o && o[item.id] != null) return o[item.id];
+    if (item.platzhalter || !faellig(mk, item)) return 0;
+    return item.betrag;
+  }
+  // Was dich ein Posten im Schnitt pro Monat kostet (dein Anteil) – für die Zukunft
+  function proMonat(mk, item) {
+    var n = item.rhythmus && item.rhythmus !== "monatlich" ? Math.max(1, (item.monate || []).length) : 12;
+    var b = n === 12 && !item.platzhalter ? sollOf(mk, item) : item.betrag * n / 12;
+    return b * (item.anteil == null ? 1 : item.anteil);
+  }
+  // Per Kreditkarte bezahlte Posten werden in der Kreditkarten-CSV erkannt, nicht auf dem Girokonto
+  function kkIst(item, mk) { return Math.round(state.kk.filter(function (t) { return t.itemId === item.id && t.effMonat === mk; }).reduce(function (s, t) { return s + t.betrag; }, 0) * 100) / 100; }
+  function adj(mk, rows) { return rows.map(function (r) { return { item: r.item, ist: r.item.kk ? kkIst(r.item, mk) : r.ist, soll: sollOf(mk, r.item), std: r.item.betrag }; }); }
 
   /* ---------- Die Rechnung des Budgetmonats ---------- */
   function rechnung() {
@@ -229,6 +251,39 @@
     if (f || row.length) { row.push(f); rows.push(row); }
     return rows.filter(function (r) { return r.some(function (c) { return c.trim(); }); });
   }
+  /* ---------- Fixkosten-CSV (eigene Aufstellung): Rhythmus, Anteil, Zahlweg ---------- */
+  var FIX_KAT = { Wohnen: "wohnen", Kredite: "schulden", Haushalt: "lebensmittel", Kommunikation: "vertraege", "Mobilität": "mobilitaet", Versicherungen: "versicherung", Abos: "abos", Sport: "gesundheit", Bank: "vertraege" };
+  // Bewährte Suchbegriffe (Empfänger oder Verwendungszweck im Kontoauszug)
+  var FIX_SUCH = { miete: "dmb zwei", strom_gas: "stadtwerke bochum", rundfunk: "rundfunk", kfw: "kreditanstalt", essen: "laura kruse", telekom: "telekom deutschland", klarmobil: "klarmobil",
+    dticket: "abo 682318536", rechtsschutz: "rechtsschutz", barmenia: "barmenia", fielmann: "nulltarifversicherung", spotify: "spotify", claude: "anthropic", urban_sports: "urban sports",
+    prime: "amznprime", steuer: "buhl-data", icloud: "icloud", microsoft: "microsoft payments", konto: "entgeltabrechnung" };
+  var RHYTHMUS_N = { monatlich: 12, zweimonatlich: 6, quartalsweise: 4, halbjaehrlich: 2, "halbjährlich": 2, jaehrlich: 1, "jährlich": 1 };
+  function isFixCsv(text) { return text.slice(0, 300).toLowerCase().indexOf("betrag_monat_mein_anteil") !== -1; }
+  function parseFixCsv(text, activeMk) {
+    var rows = splitCsv(text), h = rows[0].map(function (x) { return x.trim().toLowerCase(); }), out = [], ovr = {};
+    rows.slice(1).forEach(function (r) {
+      var o = {}; h.forEach(function (k, i) { o[k] = (r[i] || "").trim(); });
+      if (!o.id || !o.position) return;
+      var num = function (v) { var n = parseFloat(String(v).replace(",", ".")); return isNaN(n) ? 0 : n; };
+      var rh = (o.rhythmus || "monatlich").toLowerCase(), n = RHYTHMUS_N[rh] || 12;
+      var nf = o.naechste_faelligkeit ? +o.naechste_faelligkeit.slice(5, 7) : 0, monate = [];
+      if (n < 12 && nf) for (var k = 0; k < n; k++) monate.push(((nf - 1 + k * 12 / n) % 12) + 1);
+      var zw = o.zahlweg || "", empf = (o.empfaenger || "").toLowerCase();
+      var such = FIX_SUCH[o.id] || (/paypal/i.test(empf) ? ((o.verwendungszweck.match(/Einkauf bei ([^,]+)/i) || [])[1] || "").toLowerCase().trim() : empf.replace(/[*,].*$/, "").split(/\s+/).slice(0, 2).join(" "));
+      var it = {
+        id: "fx-" + o.id, beschreibung: o.position, typ: o.kategorie === "Kredite" ? "Schulden" : "Fixkosten",
+        betrag: -Math.abs(num(o.zahlbetrag_je_faelligkeit_gesamt) || num(o.betrag_monat_gesamt)), anteil: (num(o.anteil) || 100) / 100,
+        rhythmus: n === 12 ? "monatlich" : rh, monate: monate.sort(function (a, b) { return a - b; }), platzhalter: o.status === "platzhalter", aktiv: o.status !== "inaktiv",
+        zahlweg: zw, kk: /kreditkarte/i.test(zw), suchbegriff: such, stichtag: 0, notiz: o.notiz || "", kategorieId: FIX_KAT[o.kategorie] || "vertraege",
+        geteilt: /miete|strom|internet|festnetz/i.test(o.position) && (num(o.anteil) || 100) === 100
+      };
+      out.push(it);
+      // Im laufenden Monat schon anders bezahlt (z. B. Miete vor der Erhöhung): dieser Monat behält den bezahlten Betrag
+      if (activeMk && n === 12 && o.letzte_buchung_datum && o.letzte_buchung_datum.slice(0, 7) === activeMk && Math.abs(num(o.letzte_buchung_betrag) - it.betrag) > 0.005)
+        ovr[it.id] = num(o.letzte_buchung_betrag);
+    });
+    return { items: out, overrides: ovr };
+  }
   function isKKCsv(text) { var h = text.slice(0, 600).toLowerCase(); return h.indexOf("belegdatum") !== -1 && h.indexOf("buchungsbetrag") !== -1; }
   // Kreditkarten-CSV: nur für die Auswertung „Ausgaben“, nicht für den Kassensturz
   function parseKK(text) {
@@ -257,7 +312,16 @@
       mark("Import");
       state.transactions.forEach(function (t) { delete t.neu; });
       var msgs = [], nNeu = 0;
+      var bank = false;
       list.forEach(function (f) {
+        if (isFixCsv(f.text)) {
+          var fx = parseFixCsv(f.text, state.active);
+          state.expected = state.expected.filter(function (i) { return i.typ === "Einnahme"; }).concat(fx.items);
+          Object.keys(fx.overrides).forEach(function (id) { (state.overrides[state.active] = state.overrides[state.active] || {})[id] = fx.overrides[id]; });
+          msgs.push("Fixkosten: " + fx.items.length + " Posten übernommen (" + fx.items.filter(function (i) { return i.platzhalter; }).length + " davon Platzhalter)");
+          return;
+        }
+        bank = true;
         if (isKKCsv(f.text)) {
           var dk = L.dedupeImport(state.kk, parseKK(f.text));
           dk.added.forEach(function (t) { t.id = uid("kk"); state.kk.push(t); });
@@ -274,9 +338,9 @@
       });
       state.transactions.sort(function (a, b) { return a.datum < b.datum ? 1 : a.datum > b.datum ? -1 : 0; });
       enrichEverything(); freezePast(state);
-      state.importAt = Date.now(); state.kontoEinzeln = false;
+      if (bank) { state.importAt = Date.now(); state.kontoEinzeln = false; }
       state.importLog.unshift({ at: Date.now(), text: msgs.join(" · ") }); state.importLog = state.importLog.slice(0, 20);
-      if (ui.modal && ui.modal.type === "kassensturz") { ui.modal.step = 2; ui.modal.importMsg = msgs.join("\n"); render(); }
+      if (ui.modal && ui.modal.type === "kassensturz" && bank) { ui.modal.step = 2; ui.modal.importMsg = msgs.join("\n"); render(); }
       else toast(msgs.join(" · ") || "Nichts importiert.");
     }).catch(function (e) { toast("Import fehlgeschlagen: " + (e && e.message || e)); });
   }
@@ -418,11 +482,13 @@
         btn("Ja, erledigt", "settle", ' data-o="' + v.o.id + '" data-t="' + v.t.id + '"', "btn-primary btn-sm") + "</li>";
     }).join("") + "</ul></div>" : "";
 
-    var fest = R.c.rows.slice().sort(function (a, b) { return Math.abs(b.soll) - Math.abs(a.soll); });
+    var fest = R.c.rows.filter(function (r) { return Math.abs(r.soll) > 0.005 || Math.abs(r.ist) > 0.005; }).sort(function (a, b) { return Math.abs(b.soll) - Math.abs(a.soll); });
+    var nichtF = R.c.rows.filter(function (r) { return Math.abs(r.soll) < 0.005 && Math.abs(r.ist) < 0.005; });
+    var naechst = function (it) { if (it.platzhalter) return "Platzhalter"; var m = +mk.slice(5, 7), ms = it.monate || []; var n = ms.filter(function (x) { return x > m; })[0] || ms[0]; return n ? MON[n - 1] : ""; };
     var festCard = '<div class="card"><h2>Feste Posten</h2><ul class="fest">' + fest.map(function (r) {
       var done = Math.abs(rest(r)) < 0.005;
-      return '<li class="' + (done ? "done" : "") + '"><span class="ck">' + (done ? "✓" : "") + '</span><span class="fn">' + esc(r.item.beschreibung) + "</span>" + money(r.soll, "") + "</li>";
-    }).join("") + "</ul></div>";
+      return '<li class="' + (done ? "done" : "") + '"><span class="ck">' + (done ? "✓" : "") + '</span><span class="fn">' + esc(r.item.beschreibung) + (r.item.kk ? ' <em class="muted">Karte</em>' : "") + "</span>" + money(r.soll, "") + "</li>";
+    }).join("") + "</ul>" + (nichtF.length ? '<p class="muted small">Diesen Monat nicht fällig: ' + esc(nichtF.map(function (r) { return r.item.beschreibung + " (" + naechst(r.item) + ")"; }).join(", ")) + "</p>" : "") + "</div>";
 
     var next = [], m2 = mk; for (var i = 0; i < 4; i++) { m2 = L.nextMonth(m2); next.push(m2); }
     var pastCard = '<div class="card"><h2>Kommende Monate</h2><ul class="mini-list">' + next.map(function (m) {
@@ -555,7 +621,7 @@
   /* ================= Ansicht: Zukunft / Mehr ================= */
   function zctx() {
     return { state: state, L: L, eur: eur, eur0: eur0, money: money, btn: btn, esc: esc, fmt: fmt, parseNum: parseNum, mark: mark, toast: function (m) { ui.toast = m; setTimeout(function () { ui.toast = null; render(); }, 2600); },
-      sollOf: sollOf, mLabel: mLabel,
+      sollOf: sollOf, proMonat: proMonat, mLabel: mLabel,
       months: function () { var ms = Object.keys(state.frozen).sort(); ms.push(state.active); var m = state.active; for (var i = 0; i < 4; i++) { m = L.nextMonth(m); ms.push(m); } return ms.reverse(); } };
   }
   function viewZukunft() { return window.BoSalZukunft.render(zctx()); }
@@ -569,15 +635,21 @@
       (saveErr ? '<p class="note">Speichern hat nicht geklappt: ' + esc(saveErr) + ". Bitte ein Backup speichern.</p>" : '<p class="muted small">Gespeichert in diesem Browser auf diesem Gerät. Andere Geräte sehen diese Daten nicht.</p>') +
       '<div class="btn-row">' + btn("CSV importieren", "pickCsv", "", "btn-primary") + btn("Backup speichern", "exportBackup", "", "") + btn("Backup laden", "loadBackup", "", "") + btn("Alles löschen", "resetAll", "", "btn-ghost") + "</div>"
       : '<p class="muted">Du siehst gerade Beispieldaten. Nichts davon wird gespeichert.</p><div class="btn-row">' + btn("Mit meinen Daten starten", "startEcht", "", "btn-primary") + btn("Backup laden", "loadBackup", "", "") + "</div>") + "</div>";
+    var rhOpt = function (v) { return [["monatlich", "monatlich"], ["quartalsweise", "vierteljährlich"], ["halbjährlich", "halbjährlich"], ["jährlich", "jährlich"]].map(function (r) { return '<option value="' + r[0] + '"' + ((v || "monatlich") === r[0] ? " selected" : "") + ">" + r[1] + "</option>"; }).join(""); };
+    var stOpt = function (it) { var v = !it.aktiv ? "aus" : it.platzhalter ? "platz" : "aktiv"; return [["aktiv", "aktiv"], ["platz", "Platzhalter"], ["aus", "aus"]].map(function (r) { return '<option value="' + r[0] + '"' + (v === r[0] ? " selected" : "") + ">" + r[1] + "</option>"; }).join(""); };
+    var zwOpt = function (v) { return ["Lastschrift", "Dauerauftrag", "PayPal", "Kreditkarte", "Kontobelastung", "offen"].map(function (z) { return "<option" + ((v || "Lastschrift") === z ? " selected" : "") + ">" + z + "</option>"; }).join(""); };
     var typOpt = function (v) { return ["Einnahme", "Fixkosten", "Schulden"].map(function (t) { return '<option' + (t === v ? " selected" : "") + ">" + t + "</option>"; }).join(""); };
     var fp = '<div class="card"><div class="card-head"><h2>Feste Posten</h2>' + btn("＋ Posten", "fpAdd", "", "btn-sm") + "</div>" +
-      '<p class="muted small">Der Suchbegriff erkennt die Buchung im Kontoauszug (steht im Empfänger oder Verwendungszweck). Stichtag: Buchungen ab diesem Tag zählen schon für den nächsten Monat, z. B. Gehalt am 25. Rechts siehst du, was zuletzt erkannt wurde.</p>' +
-      '<div class="vt-wrap"><table class="fp-tbl"><thead><tr><th>aktiv</th><th>Name</th><th>Typ</th><th class="r">Betrag / Monat</th><th>Suchbegriff</th><th>Stichtag</th><th>zuletzt erkannt</th><th></th></tr></thead><tbody>' +
+      '<p class="muted small"><b>Betrag</b> = was pro Zahlung abgebucht wird, gesamt. <b>Fällig in</b> = Monate bei vierteljährlich/jährlich, z. B. 3, 6, 9, 12. <b>Dein Anteil</b>: was du am Ende selbst trägst (die Zukunft rechnet damit, der Monat mit dem ganzen Betrag). <b>Platzhalter</b> zählt nur in der Zukunft. <b>Suchbegriff</b> erkennt die Buchung im Kontoauszug, bei Zahlweg Kreditkarte in der Kreditkarten-CSV. <b>Stichtag</b>: Buchungen ab diesem Tag zählen für den nächsten Monat (Gehalt am 25.).</p>' +
+      '<div class="btn-row" style="margin:0 0 10px">' + btn("Fixkosten-CSV importieren", "pickCsv", "", "btn-sm") + '<span class="muted small">ersetzt alle Fixkosten und Raten, Einnahmen bleiben</span></div>' +
+      '<div class="vt-wrap"><table class="fp-tbl"><thead><tr><th>Status</th><th>Name</th><th>Typ</th><th class="r">Betrag</th><th>Rhythmus</th><th>Fällig in</th><th class="r">dein Anteil</th><th class="r">= pro Monat</th><th>Zahlweg</th><th>Suchbegriff</th><th>Stichtag</th><th>zuletzt erkannt</th><th></th></tr></thead><tbody>' +
       state.expected.map(function (it) {
-        var hits = g.filter(function (t) { return t.itemId === it.id; }), last = hits[0];
+        var hits = (it.kk ? state.kk : g).filter(function (t) { return t.itemId === it.id; }).sort(function (a, b) { return a.datum < b.datum ? 1 : -1; }), last = hits[0], mon = it.rhythmus && it.rhythmus !== "monatlich";
         var inp = function (f, v, cls) { return '<input class="' + (cls || "") + '" data-act="fp" data-id="' + it.id + '" data-f="' + f + '" value="' + esc(v) + '">'; };
-        return '<tr class="' + (it.aktiv ? "" : "off") + '"><td><input type="checkbox" data-act="fp" data-id="' + it.id + '" data-f="aktiv"' + (it.aktiv ? " checked" : "") + "></td><td>" + inp("beschreibung", it.beschreibung) + '</td><td><select data-act="fp" data-id="' + it.id + '" data-f="typ">' + typOpt(it.typ) + "</select></td>" +
-          '<td class="r">' + inp("betrag", fmt.format(it.betrag), "in-num") + "</td><td>" + inp("suchbegriff", it.suchbegriff || "") + "</td><td>" + inp("stichtag", it.stichtag || 0, "in-num fp-day") + "</td>" +
+        return '<tr class="' + (!it.aktiv ? "off" : it.platzhalter ? "platz" : "") + '"><td><select data-act="fp" data-id="' + it.id + '" data-f="status">' + stOpt(it) + "</select></td><td>" + inp("beschreibung", it.beschreibung) + (it.notiz ? '<div class="muted small fp-note">' + esc(it.notiz) + "</div>" : "") + '</td><td><select data-act="fp" data-id="' + it.id + '" data-f="typ">' + typOpt(it.typ) + "</select></td>" +
+          '<td class="r">' + inp("betrag", fmt.format(it.betrag), "in-num") + '</td><td><select data-act="fp" data-id="' + it.id + '" data-f="rhythmus">' + rhOpt(it.rhythmus) + "</select></td><td>" + (mon ? inp("monate", (it.monate || []).join(", "), "fp-mon") : '<span class="muted small">jeden</span>') + "</td>" +
+          '<td class="r">' + inp("anteil", Math.round((it.anteil == null ? 1 : it.anteil) * 100) + " %", "in-num fp-day") + '</td><td class="r num">' + (it.typ === "Einnahme" ? "" : eur(proMonat(state.active, it))) + "</td>" +
+          '<td><select data-act="fp" data-id="' + it.id + '" data-f="zahlweg">' + zwOpt(it.zahlweg) + "</select></td><td>" + inp("suchbegriff", it.suchbegriff || "") + "</td><td>" + inp("stichtag", it.stichtag || 0, "in-num fp-day") + "</td>" +
           '<td class="small">' + (last ? dLabel(last.datum) + last.datum.slice(2, 4) + " · " + eur(last.betrag) + '<br><span class="muted">' + hits.length + "× in " + new Set(hits.map(function (t) { return t.monat; })).size + " Monaten</span>" : '<span class="' + (g.length ? "neg" : "muted") + '">' + (g.length ? "nie erkannt" : "–") + "</span>") + "</td>" +
           "<td>" + btn("✕", "fpDel", ' data-id="' + it.id + '"', "btn-sm btn-ghost") + "</td></tr>";
       }).join("") + "</tbody></table></div></div>";
@@ -726,7 +798,7 @@
     if (a === "loadBackup") { backupIn.click(); return; }
     if (a === "resetAll") { if (!window.confirm("Wirklich alle deine Daten in diesem Browser löschen? Speichere vorher ein Backup.")) return; try { localStorage.removeItem(STORE); } catch (er) {} state = makeState("demo"); hist.past = []; hist.future = []; ui.view = "monat"; ui.modal = { type: "welcome" }; render(); return; }
     if (a === "txAll") { ui.txAll = true; render(); return; }
-    if (a === "fpAdd") { mark("Fester Posten hinzugefügt"); state.expected.push({ id: uid("exp"), beschreibung: "Neuer Posten", typ: "Fixkosten", betrag: -10, suchbegriff: "", stichtag: 0, notiz: "", aktiv: true, kategorieId: "vertraege" }); enrichEverything(); render(); return; }
+    if (a === "fpAdd") { mark("Fester Posten hinzugefügt"); state.expected.push({ id: uid("exp"), beschreibung: "Neuer Posten", typ: "Fixkosten", betrag: -10, anteil: 1, rhythmus: "monatlich", monate: [], zahlweg: "Lastschrift", suchbegriff: "", stichtag: 0, notiz: "", aktiv: true, kategorieId: "vertraege" }); enrichEverything(); render(); return; }
     if (a === "fpDel") { var fx = state.expected.find(function (x) { return x.id === d.id; }); if (!window.confirm("„" + fx.beschreibung + "“ löschen?")) return; mark("Fester Posten gelöscht"); state.expected = state.expected.filter(function (x) { return x.id !== d.id; }); enrichEverything(); render(); return; }
     if (a === "doImport") { mark("Import"); var n = demoImport(); state.importAt = Date.now(); state.kontoEinzeln = false; ui.modal.step = 2; ui.modal.importMsg = n ? n + " neue Buchungen importiert." : "Import ist schon drin."; render(); return; }
     if (a === "finishKS") { if (state.konten.giro == null) { toast("Bitte mindestens das Girokonto eintragen."); return; } state.kontoAt = Date.now(); state.kontoEinzeln = false; if (!state.importAt) state.importAt = Date.now(); ui.modal = null; ui.view = "monat"; toast("Kassensturz gespeichert."); return; }
@@ -798,6 +870,11 @@
       var it = state.expected.find(function (x) { return x.id === el.dataset.id; }), f = el.dataset.f;
       mark("„" + it.beschreibung + "“ geändert");
       if (f === "aktiv") it.aktiv = el.checked;
+      else if (f === "status") { it.aktiv = el.value !== "aus"; it.platzhalter = el.value === "platz"; }
+      else if (f === "rhythmus") { it.rhythmus = el.value; var nn = { monatlich: 12, quartalsweise: 4, "halbjährlich": 2, "jährlich": 1 }[el.value]; if (nn === 12) it.monate = []; else if ((it.monate || []).length !== nn) { var m0 = +state.active.slice(5, 7); it.monate = []; for (var q = 0; q < nn; q++) it.monate.push(((m0 - 1 + q * 12 / nn) % 12) + 1); it.monate.sort(function (x, y) { return x - y; }); } }
+      else if (f === "monate") it.monate = el.value.split(/[^0-9]+/).map(Number).filter(function (x) { return x >= 1 && x <= 12; }).sort(function (x, y) { return x - y; });
+      else if (f === "anteil") { var an = parseNum(el.value.replace("%", "")); if (!isNaN(an)) it.anteil = Math.max(0, Math.min(100, an)) / 100; }
+      else if (f === "zahlweg") { it.zahlweg = el.value; it.kk = el.value === "Kreditkarte"; }
       else if (f === "betrag") { var nb = parseNum(el.value); if (!isNaN(nb)) it.betrag = it.typ === "Einnahme" ? Math.abs(nb) : -Math.abs(nb); }
       else if (f === "stichtag") { var sd = parseInt(el.value, 10); it.stichtag = isNaN(sd) ? 0 : Math.max(0, Math.min(31, sd)); }
       else if (f === "typ") { it.typ = el.value; it.betrag = it.typ === "Einnahme" ? Math.abs(it.betrag) : -Math.abs(it.betrag); it.kategorieId = it.typ === "Einnahme" ? "gehalt" : it.typ === "Schulden" ? "schulden" : (it.kategorieId === "gehalt" ? "vertraege" : it.kategorieId); }

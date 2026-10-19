@@ -181,3 +181,17 @@ Annahmen → Diagramme (Vermögen, FI-Test; Überarbeitung folgt) → „So wird
 - **Offen:** Die Fixkosten-CSV des Nutzers fehlt noch (Kreditkarten-CSV wurde doppelt hochgeladen).
   Aufgefallen im Girokonto, aber nicht unter den festen Posten: Deutschlandticket (DB, 63 €/Monat),
   Rundfunkbeitrag (55,08 € pro Quartal), Baloise (66,71 €, zuletzt 01.09.2026), Amazon-Ratenzahlung (66,60 €).
+
+## Fixkosten aus der eigenen Aufstellung (Testversion 18)
+
+- Die Fixkosten-CSV des Nutzers (`fixkosten_ab_nov_2026.csv`, Spalten u. a. `betrag_monat_mein_anteil`,
+  `anteil`, `rhythmus`, `zahlbetrag_je_faelligkeit_gesamt`, `naechste_faelligkeit`, `zahlweg`, `status`)
+  ist Standard bei „Mit meinen Daten starten“ und lässt sich jederzeit neu importieren (ersetzt alle
+  Fixkosten und Raten, Einnahmen bleiben).
+- Neue Felder je festem Posten: `rhythmus` + `monate` (Fälligkeit), `anteil`, `platzhalter`, `zahlweg`, `kk`.
+- **Monat** rechnet mit dem echten Geldfluss: ganzer Betrag, nur im Fälligkeitsmonat, Platzhalter
+  zählen nicht. Posten mit Zahlweg Kreditkarte werden in der Kreditkarten-CSV erkannt.
+- **Zukunft** rechnet mit deinem Anteil pro Monat (jährlich ÷ 12, vierteljährlich × 4 ÷ 12, × Anteil),
+  Platzhalter zählen mit. Startwerte standardmäßig aus dem nächsten Monat (Oktober hat noch die alte Miete).
+- Ergebnis: Fixkosten (dein Anteil) 1.253,50 €/Monat statt 1.004,56 €, frei 1.674 € statt 1.923 €,
+  finanziell frei 2049 statt 2048.
