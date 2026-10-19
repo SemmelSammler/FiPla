@@ -112,16 +112,25 @@
     var bisM = MONL[(a.erhoehungMonat + 10) % 12], abM = MONL[a.erhoehungMonat - 1], lohnN = lohn.length ? names(lohn) : "Einnahmen netto";
     var einItems = y.erhoehung ? li(esc(lohnN) + " bis " + bisM, y.einnVor) + li(esc(lohnN) + " ab " + abM, y.einnNach, "+" + pctTxt(c, a.wachstumEinnahmen) + " Gehaltserhöhung") : li(esc(lohnN), y.einnahmen, y.jahr === first ? (mv ? "aus " + c.mLabel(mv.mk, true) : "von Hand eingetragen") : "Deckel " + eur0(Math.max(a.einnahmenDeckel, a.einnahmen)) + " erreicht");
     var ein = box("Deine Einnahmen", einItems, y.erhoehung ? "im Schnitt " + y.jahr : "pro Monat", y.einnahmen, erst.length ? names(erst) + " zählt nicht als Einkommen, sondern senkt eure geteilten Kosten." : "");
-    var fixItems = mv && (get.length || erst.length) ?
-      li("Geteilte Kosten", mv.geteilt * fF, names(get)) + li("− Anteil von anderen", -mv.erst * fF, names(erst)) + li("= dein Anteil", mv.meinGeteilt * fF, mv.geteilt ? Math.round(mv.meinGeteilt / mv.geteilt * 100) + " % der geteilten Kosten" : "", "zf-mine") + li("Nur deine", mv.allein * fF, allein.length + " Posten")
-      : li("Fixkosten", y.fixkosten, mv ? "aus " + c.mLabel(mv.mk, true) : "von Hand eingetragen");
-    var fix = box(mv && (get.length || erst.length) ? "Deine Fixkosten (dein Anteil)" : "Fixkosten", fixItems, "pro Monat", y.fixkosten, y.jahr > first ? "+" + pctTxt(c, a.wachstumFix) + " pro Jahr seit " + first + ", höchstens " + eur0(Math.max(a.fixkostenDeckel, a.fixkosten)) : "");
+    // Fixkosten einzeln: dein Anteil pro Monat (vierteljährlich/jährlich umgerechnet), Preissteigerung als eigene Zeile
+    var pm = function (i) { return Math.abs(c.proMonat(mv.mk, i)); };
+    var info = function (i) { return [i.anteil != null && i.anteil < 1 ? "dein Anteil " + Math.round(i.anteil * 100) + " %" : "", i.rhythmus && i.rhythmus !== "monatlich" ? i.rhythmus + " " + eur(Math.abs(i.betrag)) : "", i.platzhalter ? "Platzhalter" : ""].filter(Boolean).join(" · "); };
+    var fixItems;
+    if (mv) {
+      var byVal = function (l) { return l.slice().sort(function (x, z) { return pm(z) - pm(x); }); };
+      fixItems = (get.length || erst.length ? '<li class="zf-grp">Mit Laura geteilt</li>' + byVal(get).map(function (i) { return li(esc(i.beschreibung), pm(i), info(i)); }).join("") +
+          erst.map(function (i) { return '<li class="zf-minus"><span>' + esc(i.beschreibung) + '<em class="muted">zahlt dir ' + esc(i.beschreibung.replace(/^mietanteil\s*/i, "") || "jemand") + "</em></span><span class=\"num\">− " + eur(Math.abs(c.sollOf(mv.mk, i))) + "</span></li>"; }).join("") +
+          li("= dein Teil davon", mv.meinGeteilt, mv.geteilt ? Math.round(mv.meinGeteilt / mv.geteilt * 100) + " % von " + eur(mv.geteilt) : "", "zf-mine") + '<li class="zf-grp">Nur deine</li>' : "") +
+        byVal(allein).map(function (i) { return li(esc(i.beschreibung), pm(i), info(i)); }).join("") +
+        (y.fixkosten - mv.fix > 0.5 ? li("Preissteigerung seit " + first, y.fixkosten - mv.fix, "+" + pctTxt(c, a.wachstumFix) + " pro Jahr auf alles, höchstens " + eur0(Math.max(a.fixkostenDeckel, a.fixkosten))) : "");
+    } else fixItems = li("Fixkosten", y.fixkosten, "von Hand eingetragen" + (y.jahr > first ? ", +" + pctTxt(c, a.wachstumFix) + " pro Jahr" : ""));
+    var fix = box(mv ? "Deine Fixkosten pro Monat (dein Anteil)" : "Fixkosten", fixItems, "zusammen", y.fixkosten, mv ? "Werte aus " + c.mLabel(mv.mk, true) + ". Vierteljährliche und jährliche Kosten sind auf den Monat umgerechnet. Ändern unter „Deine Annahmen“ oder Mehr → Feste Posten." : "");
     var k1Weg = y.kfw1 > -0.5, k2Weg = y.kfw2 > -0.5;
     var kfwItems = li("KfW 1", y.kfw1Pfl, (k1Weg ? (y.kfw1Pfl > 0.5 ? "im Schnitt, abbezahlt " + y.jahr : "abbezahlt") : pctTxt(c, a.kfw1Zins) + " Zins")) +
       li("KfW 2", y.kfw2Pfl, k2Weg ? (y.kfw2Pfl > 0.5 ? "im Schnitt, abbezahlt " + y.jahr : "abbezahlt") : y.kfw2Pfl > 0.5 ? pctTxt(c, a.kfw2Zins) + " Zins" + (y.kfw2Pfl < (a.kfw2Rate || 0) - 0.5 ? ", Rate ab " + mkLabel(a.kfw2Ab) : "") : "noch keine Rate, ab " + (mkLabel(a.kfw2Ab) || "?"));
     var kfw = box("KfW-Raten", kfwItems, "pro Monat", y.kfw1Pfl + y.kfw2Pfl, y.kfwZins > 0.5 ? "Davon Zinsen " + y.jahr + ": " + eur0(y.kfwZins) + " im Jahr. Der Rest tilgt." : "");
     return '<section class="card z-frei"><div class="card-head"><div><h2>Was ist pro Monat frei?</h2><p class="muted small">Im Jahr ' + y.jahr + (y.monate < 12 ? ", noch " + y.monate + " Monate ab heute" : "") + ". Gleiche Aufteilung wie unter „Deine Annahmen“.</p></div></div>" +
-      '<div class="zf-grid">' + ein + fix + kfw + "</div>" +
+      '<div class="zf-grid"><div class="zf-col">' + ein + kfw + "</div>" + fix + "</div>" +
       '<div class="zf-total"><span class="num">' + eur(y.einnahmen) + " − " + eur(y.fixkosten) + " − " + eur(y.kfw1Pfl + y.kfw2Pfl) + '</span><span>= <b class="num pos">' + eur(y.frei) + "</b> frei pro Monat</span></div>" +
       '<p class="muted small">Anschaffungen stecken hier nicht drin. Sie werden im jeweiligen Monat vom Ersparten bezahlt (Karte „Anschaffungen“).</p></section>';
   }

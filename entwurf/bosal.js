@@ -158,7 +158,8 @@
   }
   // Per Kreditkarte bezahlte Posten werden in der Kreditkarten-CSV erkannt, nicht auf dem Girokonto
   function kkIst(item, mk) { return Math.round(state.kk.filter(function (t) { return t.itemId === item.id && t.effMonat === mk; }).reduce(function (s, t) { return s + t.betrag; }, 0) * 100) / 100; }
-  function adj(mk, rows) { return rows.map(function (r) { return { item: r.item, ist: r.item.kk ? kkIst(r.item, mk) : r.ist, soll: sollOf(mk, r.item), std: r.item.betrag }; }); }
+  // hand: von Hand abgehakt (true = schon vom Konto abgegangen, false = noch nicht), sonst entscheidet der Import
+  function adj(mk, rows) { var h = (state.haken || {})[mk] || {}; return rows.map(function (r) { return { item: r.item, ist: r.item.kk ? kkIst(r.item, mk) : r.ist, soll: sollOf(mk, r.item), std: r.item.betrag, hand: h[r.item.id] }; }); }
 
   /* ---------- Die Rechnung des Budgetmonats ---------- */
   function rechnung() {
@@ -196,7 +197,7 @@
     var gv = gepl.reduce(function (s, o) { return s + signOf(o) * o.betrag; }, 0), tr = transfersFor(mk);
     return { plan: plan, geplant: gepl, gv: gv, tr: tr, total: Math.round((plan + gv + tr.sum) * 100) / 100 };
   }
-  function rest(r) { var x = r.soll - r.ist; return r.soll >= 0 ? Math.max(0, x) : Math.min(0, x); }
+  function rest(r) { if (r.hand === true) return 0; var x = r.soll - (r.hand === false ? 0 : r.ist); return r.soll >= 0 ? Math.max(0, x) : Math.min(0, x); }
 
   // Passen neue Buchungen zu offenen Posten? (Betrag gleich, Richtung gleich; Name passt = sicherer)
   function vorschlaege() {
@@ -485,9 +486,9 @@
     var fest = R.c.rows.filter(function (r) { return Math.abs(r.soll) > 0.005 || Math.abs(r.ist) > 0.005; }).sort(function (a, b) { return Math.abs(b.soll) - Math.abs(a.soll); });
     var nichtF = R.c.rows.filter(function (r) { return Math.abs(r.soll) < 0.005 && Math.abs(r.ist) < 0.005; });
     var naechst = function (it) { if (it.platzhalter) return "Platzhalter"; var m = +mk.slice(5, 7), ms = it.monate || []; var n = ms.filter(function (x) { return x > m; })[0] || ms[0]; return n ? MON[n - 1] : ""; };
-    var festCard = '<div class="card"><h2>Feste Posten</h2><ul class="fest">' + fest.map(function (r) {
+    var festCard = '<div class="card"><h2>Feste Posten</h2><p class="muted small">Haken = schon vom Konto abgegangen bzw. eingegangen. Der Import hakt automatisch ab, du kannst es jederzeit selbst ändern.</p><ul class="fest">' + fest.map(function (r) {
       var done = Math.abs(rest(r)) < 0.005;
-      return '<li class="' + (done ? "done" : "") + '"><span class="ck">' + (done ? "✓" : "") + '</span><span class="fn">' + esc(r.item.beschreibung) + (r.item.kk ? ' <em class="muted">Karte</em>' : "") + "</span>" + money(r.soll, "") + "</li>";
+      return '<li class="' + (done ? "done" : "") + (r.hand != null ? " hand" : "") + '"><button class="ck" data-act="haken" data-id="' + r.item.id + '" aria-pressed="' + done + '" title="' + (r.hand != null ? "von Hand gesetzt, nochmal tippen zum Ändern" : done ? "vom Import erkannt" : "abhaken") + '">' + (done ? "✓" : "") + '</button><span class="fn">' + esc(r.item.beschreibung) + (r.item.kk ? ' <em class="muted">Karte</em>' : "") + (r.hand != null ? ' <em class="muted">von Hand</em>' : "") + "</span>" + money(r.soll, "") + "</li>";
     }).join("") + "</ul>" + (nichtF.length ? '<p class="muted small">Diesen Monat nicht fällig: ' + esc(nichtF.map(function (r) { return r.item.beschreibung + " (" + naechst(r.item) + ")"; }).join(", ")) + "</p>" : "") + "</div>";
 
     var next = [], m2 = mk; for (var i = 0; i < 4; i++) { m2 = L.nextMonth(m2); next.push(m2); }
@@ -550,15 +551,30 @@
     }).join("");
     var done = state.offen.filter(function (o) { return o.erledigt; });
     var doneCard = done.length ? '<div class="card"><button class="btn-link" data-act="toggleDone">' + (ui.showDone ? "▾" : "▸") + " Erledigt (" + done.length + ")</button>" +
-      (ui.showDone ? '<ul class="olist done">' + done.map(function (o) { return "<li><span>" + esc((o.person ? o.person + " · " : "") + o.text) + '</span><span class="muted small">' + esc(o.erledigtWie || "") + "</span>" + money(signOf(o) * o.betrag, "") + btn("↶ wieder öffnen", "reopenItem", ' data-o="' + o.id + '"', "btn-sm") + "</li>"; }).join("") + "</ul>" : "") + "</div>" : "";
+      (ui.showDone ? '<ul class="olist done">' + done.map(function (o) { if (ui.editO === o.id) return oEdit(o); return "<li><span>" + esc((o.person ? o.person + " · " : "") + o.text) + '</span><span class="muted small">' + esc(o.erledigtWie || "") + "</span>" + money(signOf(o) * o.betrag, "") + btn("✎", "editO", ' data-o="' + o.id + '" title="Bearbeiten"', "btn-sm btn-ghost") + btn("↶ wieder öffnen", "reopenItem", ' data-o="' + o.id + '"', "btn-sm") + "</li>"; }).join("") + "</ul>" : "") + "</div>" : "";
     return '<h1 class="page-t">Offene Posten</h1><p class="lead muted">Alles, was noch nicht erledigt ist. Es wandert automatisch in den nächsten Monat mit, bis du es abhakst oder der Import es erledigt.</p>' +
       '<div class="grid-o"><div class="col">' + form + groups + doneCard + '</div><div class="col">' + pCard + "</div></div>";
   }
+  // Bearbeiten-Formular für einen offenen (oder erledigten) Posten
+  function oEdit(o) {
+    var dr = ui.editDraft || {}, art = ui.editArt || o.art, cats = state.categories.filter(function (c) { return c.typ === "ausgabe" && !c.system; });
+    var ms = [], m = L.prevMonth(state.active); for (var i = 0; i < 8; i++) { ms.push(m); m = L.nextMonth(m); }
+    return '<li class="o-edit"><div class="form">' +
+      '<label><span>Art</span><select id="e-art" data-act="eArt">' + Object.keys(ART).map(function (x) { return '<option value="' + x + '"' + (x === art ? " selected" : "") + ">" + ART[x].label + "</option>"; }).join("") + "</select></label>" +
+      '<label><span>Person</span><input id="e-person" value="' + esc(dr.person != null ? dr.person : o.person || "") + '" placeholder="optional"></label>' +
+      '<label class="grow"><span>Wofür</span><input id="e-text" value="' + esc(dr.text != null ? dr.text : o.text) + '"></label>' +
+      '<label><span>Betrag</span><input id="e-betrag" class="in-num" inputmode="decimal" value="' + (dr.betrag != null ? esc(dr.betrag) : fmt.format(o.betrag)) + '"></label>' +
+      (art === "geplant" ? '<label><span>Richtung</span><select id="e-richtung"><option value="-1"' + ((o.richtung || -1) < 0 ? " selected" : "") + '>Ausgabe</option><option value="1"' + (o.richtung > 0 ? " selected" : "") + ">Einnahme</option></select></label>" +
+        '<label><span>Für Monat</span><select id="e-monat">' + ms.map(function (x) { return '<option value="' + x + '"' + (x === (o.monat || state.active) ? " selected" : "") + ">" + mLabel(x, true) + "</option>"; }).join("") + "</select></label>" : "") +
+      (art !== "forderung" && art !== "ruecklage" ? '<label><span>Kategorie</span><select id="e-kat">' + cats.map(function (c) { return '<option value="' + c.id + '"' + (c.id === o.kat ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</select></label>" : "") +
+      "</div>" + '<div class="o-edit-f">' + btn("Abbrechen", "cancelO", "", "btn-ghost btn-sm") + btn("Speichern", "saveO", ' data-o="' + o.id + '"', "btn-primary btn-sm") + "</div></li>";
+  }
   function oRow(o) {
+    if (ui.editO === o.id) return oEdit(o);
     var lnk = o.txId ? state.transactions.find(function (t) { return t.id === o.txId; }) : null;
     return '<li><div class="o-main"><span class="o-t">' + esc(o.person ? o.person + " · " : "") + esc(o.text) + '</span><span class="muted small">' +
       (o.monat && o.monat > state.active ? "für " + mLabel(o.monat, true) + " · " : o.seit !== state.active ? "seit " + mLabel(o.seit, true) + " · " : "") + (lnk ? "aus Buchung " + esc(lnk.empfaenger.split("/")[0]) + " · " : "") + ART[o.art].short + "</span></div>" +
-      money(signOf(o) * o.betrag) + '<span class="o-act">' + btn("✓", "done", ' data-o="' + o.id + '" title="Erledigt"', "btn-sm") + btn("✕", "del", ' data-o="' + o.id + '" title="Löschen"', "btn-sm btn-ghost") + "</span></li>";
+      money(signOf(o) * o.betrag) + '<span class="o-act">' + btn("✎", "editO", ' data-o="' + o.id + '" title="Bearbeiten"', "btn-sm btn-ghost") + btn("✓", "done", ' data-o="' + o.id + '" title="Erledigt"', "btn-sm") + btn("✕", "del", ' data-o="' + o.id + '" title="Löschen"', "btn-sm btn-ghost") + "</span></li>";
   }
 
   /* ================= Ansicht: Ausgaben ================= */
@@ -626,33 +642,61 @@
   }
   function viewZukunft() { return window.BoSalZukunft.render(zctx()); }
   function viewMehr() {
-    var echt = state.modus === "echt", g = state.transactions;
+    var echt = state.modus === "echt", g = state.transactions, pmk = L.nextMonth(state.active);   // Standardwerte, ohne Abweichungen des laufenden Monats
     var von = g.length ? g.reduce(function (m, t) { return t.datum < m ? t.datum : m; }, "9999") : null, bis = g.length ? g.reduce(function (m, t) { return t.datum > m ? t.datum : m; }, "") : null;
-    var daten = '<div class="card"><h2>Deine Daten</h2>' + (echt ?
-      '<ul class="mini-list"><li><span>Girokonto</span><span>' + g.length + " Buchungen" + (von ? " · " + dLabel(von) + von.slice(0, 4) + " bis " + dLabel(bis) + bis.slice(0, 4) : "") + "</span></li>" +
-      "<li><span>Kreditkarte</span><span>" + state.kk.length + " Buchungen</span></li>" +
-      "<li><span>Letzter Import</span><span>" + (state.importLog[0] ? tLabel(state.importLog[0].at) : "noch keiner") + "</span></li></ul>" +
-      (saveErr ? '<p class="note">Speichern hat nicht geklappt: ' + esc(saveErr) + ". Bitte ein Backup speichern.</p>" : '<p class="muted small">Gespeichert in diesem Browser auf diesem Gerät. Andere Geräte sehen diese Daten nicht.</p>') +
-      '<div class="btn-row">' + btn("CSV importieren", "pickCsv", "", "btn-primary") + btn("Backup speichern", "exportBackup", "", "") + btn("Backup laden", "loadBackup", "", "") + btn("Alles löschen", "resetAll", "", "btn-ghost") + "</div>"
-      : '<p class="muted">Du siehst gerade Beispieldaten. Nichts davon wird gespeichert.</p><div class="btn-row">' + btn("Mit meinen Daten starten", "startEcht", "", "btn-primary") + btn("Backup laden", "loadBackup", "", "") + "</div>") + "</div>";
-    var rhOpt = function (v) { return [["monatlich", "monatlich"], ["quartalsweise", "vierteljährlich"], ["halbjährlich", "halbjährlich"], ["jährlich", "jährlich"]].map(function (r) { return '<option value="' + r[0] + '"' + ((v || "monatlich") === r[0] ? " selected" : "") + ">" + r[1] + "</option>"; }).join(""); };
-    var stOpt = function (it) { var v = !it.aktiv ? "aus" : it.platzhalter ? "platz" : "aktiv"; return [["aktiv", "aktiv"], ["platz", "Platzhalter"], ["aus", "aus"]].map(function (r) { return '<option value="' + r[0] + '"' + (v === r[0] ? " selected" : "") + ">" + r[1] + "</option>"; }).join(""); };
-    var zwOpt = function (v) { return ["Lastschrift", "Dauerauftrag", "PayPal", "Kreditkarte", "Kontobelastung", "offen"].map(function (z) { return "<option" + ((v || "Lastschrift") === z ? " selected" : "") + ">" + z + "</option>"; }).join(""); };
-    var typOpt = function (v) { return ["Einnahme", "Fixkosten", "Schulden"].map(function (t) { return '<option' + (t === v ? " selected" : "") + ">" + t + "</option>"; }).join(""); };
-    var fp = '<div class="card"><div class="card-head"><h2>Feste Posten</h2>' + btn("＋ Posten", "fpAdd", "", "btn-sm") + "</div>" +
-      '<p class="muted small"><b>Betrag</b> = was pro Zahlung abgebucht wird, gesamt. <b>Fällig in</b> = Monate bei vierteljährlich/jährlich, z. B. 3, 6, 9, 12. <b>Dein Anteil</b>: was du am Ende selbst trägst (die Zukunft rechnet damit, der Monat mit dem ganzen Betrag). <b>Platzhalter</b> zählt nur in der Zukunft. <b>Suchbegriff</b> erkennt die Buchung im Kontoauszug, bei Zahlweg Kreditkarte in der Kreditkarten-CSV. <b>Stichtag</b>: Buchungen ab diesem Tag zählen für den nächsten Monat (Gehalt am 25.).</p>' +
-      '<div class="btn-row" style="margin:0 0 10px">' + btn("Fixkosten-CSV importieren", "pickCsv", "", "btn-sm") + '<span class="muted small">ersetzt alle Fixkosten und Raten, Einnahmen bleiben</span></div>' +
-      '<div class="vt-wrap"><table class="fp-tbl"><thead><tr><th>Status</th><th>Name</th><th>Typ</th><th class="r">Betrag</th><th>Rhythmus</th><th>Fällig in</th><th class="r">dein Anteil</th><th class="r">= pro Monat</th><th>Zahlweg</th><th>Suchbegriff</th><th>Stichtag</th><th>zuletzt erkannt</th><th></th></tr></thead><tbody>' +
-      state.expected.map(function (it) {
-        var hits = (it.kk ? state.kk : g).filter(function (t) { return t.itemId === it.id; }).sort(function (a, b) { return a.datum < b.datum ? 1 : -1; }), last = hits[0], mon = it.rhythmus && it.rhythmus !== "monatlich";
-        var inp = function (f, v, cls) { return '<input class="' + (cls || "") + '" data-act="fp" data-id="' + it.id + '" data-f="' + f + '" value="' + esc(v) + '">'; };
-        return '<tr class="' + (!it.aktiv ? "off" : it.platzhalter ? "platz" : "") + '"><td><select data-act="fp" data-id="' + it.id + '" data-f="status">' + stOpt(it) + "</select></td><td>" + inp("beschreibung", it.beschreibung) + (it.notiz ? '<div class="muted small fp-note">' + esc(it.notiz) + "</div>" : "") + '</td><td><select data-act="fp" data-id="' + it.id + '" data-f="typ">' + typOpt(it.typ) + "</select></td>" +
-          '<td class="r">' + inp("betrag", fmt.format(it.betrag), "in-num") + '</td><td><select data-act="fp" data-id="' + it.id + '" data-f="rhythmus">' + rhOpt(it.rhythmus) + "</select></td><td>" + (mon ? inp("monate", (it.monate || []).join(", "), "fp-mon") : '<span class="muted small">jeden</span>') + "</td>" +
-          '<td class="r">' + inp("anteil", Math.round((it.anteil == null ? 1 : it.anteil) * 100) + " %", "in-num fp-day") + '</td><td class="r num">' + (it.typ === "Einnahme" ? "" : eur(proMonat(state.active, it))) + "</td>" +
-          '<td><select data-act="fp" data-id="' + it.id + '" data-f="zahlweg">' + zwOpt(it.zahlweg) + "</select></td><td>" + inp("suchbegriff", it.suchbegriff || "") + "</td><td>" + inp("stichtag", it.stichtag || 0, "in-num fp-day") + "</td>" +
-          '<td class="small">' + (last ? dLabel(last.datum) + last.datum.slice(2, 4) + " · " + eur(last.betrag) + '<br><span class="muted">' + hits.length + "× in " + new Set(hits.map(function (t) { return t.monat; })).size + " Monaten</span>" : '<span class="' + (g.length ? "neg" : "muted") + '">' + (g.length ? "nie erkannt" : "–") + "</span>") + "</td>" +
-          "<td>" + btn("✕", "fpDel", ' data-id="' + it.id + '"', "btn-sm btn-ghost") + "</td></tr>";
-      }).join("") + "</tbody></table></div></div>";
+    var kv = function (k, v) { return "<div><dt>" + k + '</dt><dd class="num">' + v + "</dd></div>"; };
+    var daten = '<div class="card mehr-daten"><div class="card-head"><h2>Deine Daten</h2>' + (echt ? '<span class="pill">gespeichert in diesem Browser</span>' : '<span class="pill warn">Beispieldaten</span>') + "</div>" + (echt ?
+      '<dl class="kv md-kv">' + kv("Girokonto", g.length + " Buchungen" + (von ? ", " + dLabel(von) + von.slice(0, 4) + " bis " + dLabel(bis) + bis.slice(0, 4) : "")) + kv("Kreditkarte", state.kk.length + " Buchungen") +
+      kv("Feste Posten", state.expected.length) + kv("Letzter Import", state.importLog[0] ? tLabel(state.importLog[0].at) : "noch keiner") + "</dl>" +
+      (saveErr ? '<p class="note">Speichern hat nicht geklappt: ' + esc(saveErr) + ". Bitte ein Backup speichern.</p>" : '<p class="muted small">Andere Geräte und Browser sehen diese Daten nicht. Sichere sie regelmäßig mit „Backup speichern“.</p>') +
+      '<div class="btn-row">' + btn("CSV importieren", "pickCsv", "", "btn-primary") + btn("Backup speichern", "exportBackup", "", "") + btn("Backup laden", "loadBackup", "", "") + '<span class="grow"></span>' + btn("Alles löschen", "resetAll", "", "btn-ghost") + "</div>"
+      : '<p class="muted">Nichts davon wird gespeichert.</p><div class="btn-row">' + btn("Mit meinen Daten starten", "startEcht", "", "btn-primary") + btn("Backup laden", "loadBackup", "", "") + "</div>") + "</div>";
+
+    // Feste Posten: eine aufgeräumte Liste, ein Klick öffnet das Formular
+    var opt = function (list, v) { return list.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === v ? " selected" : "") + ">" + o[1] + "</option>"; }).join(""); };
+    var RH = [["monatlich", "monatlich"], ["quartalsweise", "vierteljährlich"], ["halbjährlich", "halbjährlich"], ["jährlich", "jährlich"]];
+    var rhName = function (v) { var r = RH.find(function (x) { return x[0] === (v || "monatlich"); }); return r ? r[1] : v; };
+    var groups = [
+      ["Einnahmen", function (i) { return i.aktiv && i.typ === "Einnahme"; }],
+      ["Fixkosten", function (i) { return i.aktiv && !i.platzhalter && i.typ === "Fixkosten"; }],
+      ["Raten und Kredite", function (i) { return i.aktiv && !i.platzhalter && i.typ === "Schulden"; }],
+      ["Platzhalter (zählen nur in der Zukunft)", function (i) { return i.aktiv && i.platzhalter; }],
+      ["Aus", function (i) { return !i.aktiv; }]
+    ];
+    function hitsOf(it) { return (it.kk ? state.kk : g).filter(function (t) { return t.itemId === it.id; }).sort(function (x, y) { return x.datum < y.datum ? 1 : -1; }); }
+    function row(it) {
+      var hits = hitsOf(it), last = hits[0], open = ui.fpOpen === it.id, ein = it.typ === "Einnahme";
+      var sub = [rhName(it.rhythmus) + (it.rhythmus && it.rhythmus !== "monatlich" && (it.monate || []).length ? " (" + it.monate.map(function (m) { return MON[m - 1]; }).join(", ") + ")" : ""), it.anteil != null && it.anteil < 1 ? "dein Anteil " + Math.round(it.anteil * 100) + " %" : "", it.zahlweg && it.zahlweg !== "Lastschrift" ? it.zahlweg : ""].filter(Boolean).join(" · ");
+      var erk = last ? dLabel(last.datum) + last.datum.slice(2, 4) + '<span class="muted"> · ' + hits.length + "×</span>" : '<span class="' + (g.length && !it.platzhalter ? "neg" : "muted") + '">' + (it.platzhalter ? "–" : g.length ? "nie erkannt" : "–") + "</span>";
+      var head = '<button class="fp-row' + (open ? " on" : "") + '" data-act="fpOpen" data-id="' + it.id + '"><span class="fp-n"><b>' + esc(it.beschreibung) + '</b><em class="muted">' + esc(sub) + '</em></span><span class="num fp-b">' + eur(it.betrag) + '</span><span class="num fp-m">' + (ein ? "" : eur(-proMonat(pmk, it))) + '</span><span class="fp-e small">' + erk + '</span><span class="fp-chev" aria-hidden="true">' + (open ? "▴" : "▾") + "</span></button>";
+      if (!open) return "<li>" + head + "</li>";
+      var inp = function (f, label, v, cls, ph) { return '<label><span>' + label + '</span><input class="' + (cls || "") + '" data-act="fp" data-id="' + it.id + '" data-f="' + f + '" value="' + esc(v) + '"' + (ph ? ' placeholder="' + ph + '"' : "") + "></label>"; };
+      var sel = function (f, label, html) { return '<label><span>' + label + '</span><select data-act="fp" data-id="' + it.id + '" data-f="' + f + '">' + html + "</select></label>"; };
+      var mon = it.rhythmus && it.rhythmus !== "monatlich";
+      var form = '<div class="fp-form">' +
+        inp("beschreibung", "Name", it.beschreibung) +
+        sel("typ", "Typ", opt([["Einnahme", "Einnahme"], ["Fixkosten", "Fixkosten"], ["Schulden", "Rate / Kredit"]], it.typ)) +
+        sel("status", "Status", opt([["aktiv", "aktiv"], ["platz", "Platzhalter"], ["aus", "aus"]], !it.aktiv ? "aus" : it.platzhalter ? "platz" : "aktiv")) +
+        inp("betrag", "Betrag je Zahlung (gesamt)", fmt.format(it.betrag), "in-num") +
+        sel("rhythmus", "Rhythmus", opt(RH, it.rhythmus || "monatlich")) +
+        (mon ? inp("monate", "Fällig in (Monate)", (it.monate || []).join(", "), "", "z. B. 3, 6, 9, 12") : '<label><span>Fällig in</span><input value="jeden Monat" disabled></label>') +
+        (ein ? "" : inp("anteil", "Dein Anteil", Math.round((it.anteil == null ? 1 : it.anteil) * 100) + " %", "in-num")) +
+        sel("zahlweg", "Zahlweg", opt(["Lastschrift", "Dauerauftrag", "Überweisung", "PayPal", "Kreditkarte", "Kontobelastung", "offen"].map(function (z) { return [z, z]; }), it.zahlweg || "Lastschrift")) +
+        inp("suchbegriff", it.kk ? "Suchbegriff (Kreditkarte)" : "Suchbegriff (Kontoauszug)", it.suchbegriff || "", "", "z. B. stadtwerke") +
+        inp("stichtag", "Stichtag (0 = keiner)", it.stichtag || 0, "in-num") +
+        '<label class="fp-wide"><span>Notiz</span><input data-act="fp" data-id="' + it.id + '" data-f="notiz" value="' + esc(it.notiz || "") + '"></label>' +
+        "</div>" +
+        '<div class="fp-foot"><span class="muted small">' + (ein ? "" : "Pro Monat für die Zukunft: <b>" + eur(-proMonat(pmk, it)) + "</b>. ") + (last ? "Zuletzt erkannt: " + dLabel(last.datum) + last.datum.slice(0, 4) + ", " + eur(last.betrag) + "." : "") + "</span>" + btn("Löschen", "fpDel", ' data-id="' + it.id + '"', "btn-sm btn-ghost") + "</div>";
+      return '<li class="open">' + head + form + "</li>";
+    }
+    var lists = groups.map(function (gr) {
+      var l = state.expected.filter(gr[1]); if (!l.length) return "";
+      var sum = l.reduce(function (s2, i) { return s2 + (i.typ === "Einnahme" ? i.betrag : -proMonat(pmk, i)); }, 0);
+      return '<div class="fp-group"><div class="fp-gh"><span>' + gr[0] + ' <span class="cnt">' + l.length + '</span></span><span class="num">' + (gr[0] === "Aus" ? "" : eur(sum) + " / Monat") + "</span></div><ul class=\"fp-list\">" + l.map(row).join("") + "</ul></div>";
+    }).join("");
+    var fp = '<div class="card"><div class="card-head"><h2>Feste Posten</h2><div class="btn-row" style="margin:0">' + btn("Fixkosten-CSV importieren", "pickCsv", "", "btn-sm") + btn("＋ Posten", "fpAdd", "", "btn-sm btn-primary") + "</div></div>" +
+      '<p class="muted small">Antippen zum Bearbeiten. „Betrag“ ist die einzelne Zahlung, „pro Monat“ dein Anteil umgerechnet auf einen Monat (damit rechnet die Zukunft). Der Monat rechnet mit der ganzen Zahlung im Fälligkeitsmonat.</p>' +
+      '<div class="fp-th"><span>Posten</span><span class="r">Betrag</span><span class="r">pro Monat</span><span>zuletzt erkannt</span><span></span></div>' + lists + "</div>";
     return '<h1 class="page-t">Mehr</h1><div class="z-stack">' + daten + fp + '<div class="card">' + palettePicker() + "</div></div>";
   }
 
@@ -797,8 +841,31 @@
     if (a === "exportBackup") { exportBackup(); toast("Backup wird gespeichert (Ordner Downloads)."); return; }
     if (a === "loadBackup") { backupIn.click(); return; }
     if (a === "resetAll") { if (!window.confirm("Wirklich alle deine Daten in diesem Browser löschen? Speichere vorher ein Backup.")) return; try { localStorage.removeItem(STORE); } catch (er) {} state = makeState("demo"); hist.past = []; hist.future = []; ui.view = "monat"; ui.modal = { type: "welcome" }; render(); return; }
+    if (a === "haken") {
+      var mkH = state.active, rowH = adj(mkH, L.monthCockpit(state, mkH).rows).find(function (x) { return x.item.id === d.id; });
+      var autoDone = Math.abs(rest({ soll: rowH.soll, ist: rowH.ist })) < 0.005, nowDone = Math.abs(rest(rowH)) < 0.005;
+      mark("„" + rowH.item.beschreibung + "“ " + (nowDone ? "nicht mehr abgehakt" : "abgehakt"));
+      var hk = (state.haken = state.haken || {})[mkH] = state.haken[mkH] || {};
+      if (!nowDone === autoDone) delete hk[d.id]; else hk[d.id] = !nowDone;
+      render(); return;
+    }
+    if (a === "editO") { ui.editO = d.o; ui.editArt = null; ui.editDraft = null; render(); return; }
+    if (a === "cancelO") { ui.editO = null; ui.editArt = null; ui.editDraft = null; render(); return; }
+    if (a === "saveO") {
+      var oe = state.offen.find(function (x) { return x.id === d.o; }), eb = parseNum(document.getElementById("e-betrag").value), et = document.getElementById("e-text").value.trim();
+      if (!et || isNaN(eb) || eb === 0) { toast("Bitte „Wofür“ und Betrag ausfüllen."); return; }
+      var eart = document.getElementById("e-art").value, ep = document.getElementById("e-person").value.trim();
+      if ((eart === "forderung" || eart === "schuld") && !ep) { toast("Bitte eine Person eintragen."); return; }
+      mark("„" + et + "“ geändert");
+      oe.art = eart; oe.text = et; oe.betrag = Math.abs(eb); oe.person = ep;
+      var er = document.getElementById("e-richtung"), em = document.getElementById("e-monat"), ek = document.getElementById("e-kat");
+      if (eart === "geplant") { oe.richtung = er ? +er.value : -1; oe.monat = em ? em.value : state.active; } else { delete oe.richtung; delete oe.monat; }
+      if (ek) oe.kat = ek.value; else if (eart === "ruecklage") oe.kat = "sparen";
+      ui.editO = null; ui.editArt = null; ui.editDraft = null; toast("Gespeichert."); return;
+    }
     if (a === "txAll") { ui.txAll = true; render(); return; }
-    if (a === "fpAdd") { mark("Fester Posten hinzugefügt"); state.expected.push({ id: uid("exp"), beschreibung: "Neuer Posten", typ: "Fixkosten", betrag: -10, anteil: 1, rhythmus: "monatlich", monate: [], zahlweg: "Lastschrift", suchbegriff: "", stichtag: 0, notiz: "", aktiv: true, kategorieId: "vertraege" }); enrichEverything(); render(); return; }
+    if (a === "fpOpen") { ui.fpOpen = ui.fpOpen === d.id ? null : d.id; render(); return; }
+    if (a === "fpAdd") { mark("Fester Posten hinzugefügt"); var nid = uid("exp"); ui.fpOpen = nid; state.expected.push({ id: nid, beschreibung: "Neuer Posten", typ: "Fixkosten", betrag: -10, anteil: 1, rhythmus: "monatlich", monate: [], zahlweg: "Lastschrift", suchbegriff: "", stichtag: 0, notiz: "", aktiv: true, kategorieId: "vertraege" }); enrichEverything(); render(); return; }
     if (a === "fpDel") { var fx = state.expected.find(function (x) { return x.id === d.id; }); if (!window.confirm("„" + fx.beschreibung + "“ löschen?")) return; mark("Fester Posten gelöscht"); state.expected = state.expected.filter(function (x) { return x.id !== d.id; }); enrichEverything(); render(); return; }
     if (a === "doImport") { mark("Import"); var n = demoImport(); state.importAt = Date.now(); state.kontoEinzeln = false; ui.modal.step = 2; ui.modal.importMsg = n ? n + " neue Buchungen importiert." : "Import ist schon drin."; render(); return; }
     if (a === "finishKS") { if (state.konten.giro == null) { toast("Bitte mindestens das Girokonto eintragen."); return; } state.kontoAt = Date.now(); state.kontoEinzeln = false; if (!state.importAt) state.importAt = Date.now(); ui.modal = null; ui.view = "monat"; toast("Kassensturz gespeichert."); return; }
@@ -881,6 +948,7 @@
       else it[f] = el.value.trim();
       enrichEverything(); renderAfterChange(el); return;
     }
+    if (el.dataset.act === "eArt") { ui.editArt = el.value; ui.editDraft = { person: document.getElementById("e-person").value, text: document.getElementById("e-text").value, betrag: document.getElementById("e-betrag").value }; render(); return; }
     if (el.dataset.act === "inclFix") { ui.inclFix = el.checked; render(); return; }
     if (el.dataset.act === "ovr") {
       var it = state.expected.find(function (x) { return x.id === el.dataset.id; }), n = parseNum(el.value);

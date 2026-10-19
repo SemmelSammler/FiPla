@@ -195,3 +195,16 @@ Annahmen → Diagramme (Vermögen, FI-Test; Überarbeitung folgt) → „So wird
   Platzhalter zählen mit. Startwerte standardmäßig aus dem nächsten Monat (Oktober hat noch die alte Miete).
 - Ergebnis: Fixkosten (dein Anteil) 1.253,50 €/Monat statt 1.004,56 €, frei 1.674 € statt 1.923 €,
   finanziell frei 2049 statt 2048.
+
+## Testversion 19
+
+- **Zukunft, „Was ist pro Monat frei?“:** Fixkosten einzeln mit deinem Monatsanteil („Mit Laura
+  geteilt“ minus Mietanteil = dein Teil, dann „Nur deine“). Steigerungen stehen als eigene Zeile
+  „Preissteigerung seit …“; die einzelnen Posten werden nicht mehr hochgerechnet. Links Einnahmen und KfW.
+- **Monat, Feste Posten:** von Hand abhaken (`state.haken[monat][postenId]`, true = schon abgegangen,
+  false = noch nicht). Gilt vor dem Import-Ergebnis, zählt in „Geht noch ab“ und beim Monatsstart.
+- **Offen:** Jeder Eintrag (auch erledigte) ist bearbeitbar: Art, Person, Wofür, Betrag, Richtung,
+  Monat, Kategorie.
+- **Mehr:** „Deine Daten“ als zweispaltige Übersicht; „Feste Posten“ als gruppierte Liste (Einnahmen,
+  Fixkosten, Raten, Platzhalter, Aus) mit Betrag, Monatsanteil, zuletzt erkannt; Antippen öffnet das
+  Formular. Funktioniert auch schmal (Handy).
