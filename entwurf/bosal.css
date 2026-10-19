@@ -8,7 +8,7 @@ body { padding-top: 0; }
 .mhead .page-t { margin-bottom: 2px; }
 .grid-m, .grid-o { display: grid; gap: var(--gap); grid-template-columns: 1.35fr 1fr; align-items: start; }
 .grid-m .col, .grid-o .col { display: grid; gap: var(--gap); min-width: 0; }
-.grid-a { display: grid; gap: var(--gap); grid-template-columns: 1fr 1fr; align-items: start; }
+.grid-a { display: grid; gap: var(--gap); grid-template-columns: 1.35fr 1fr; align-items: start; }
 .hero { min-height: 0; }
 .hero .hero-num { font-size: 72px; }
 

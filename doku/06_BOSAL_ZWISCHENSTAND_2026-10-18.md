@@ -147,3 +147,18 @@ Hauptgründe: höherer Lebensbedarf (1), Fixkosten aus dem Monat (6), Haus-EK ni
   nur KfW-Rate und ggf. ein Kredit aus Anschaffungen.
 - **Gehaltserhöhung** jeweils ab einem Monat (Annahme „Gehaltserhöhung jeweils ab“, Standard Mai).
   Fixkosten steigen weiter im Januar.
+
+## Zukunft neu geordnet (Entwurf 16)
+
+Reihenfolge: Finanziell frei ab + Jahr → Was ist pro Monat frei? (Einnahmen | Fixkosten dein Anteil |
+KfW, wie in den Annahmen) → Deine Töpfe (Standard: Kontostände, Monate) → Anschaffungen → Deine
+Annahmen → Diagramme (Vermögen, FI-Test; Überarbeitung folgt) → „So wird das Freie verteilt“
+(zuklappbar, ein Monat als Reihenfolge mit will / bekommt / danach übrig / warum).
+
+- Entfernt: „Alle Töpfe Ende Jahr“, „Was gegenüber der alten Rechnung korrigiert ist“, Schrittnummern.
+- „Deine Töpfe“: gleiche Zeilen in Kontoständen und Einzahlungen, gruppiert in Gespart (1 ETF-Depot,
+  2 Notgroschen, 3 Haus-EK, 4 Kinder-Sparen), Schulden (5 KfW, ! Kredit), Ausgegeben (6 Lebensqualität,
+  7 Auto, – Nicht verplant). ETF-Mindestbetrag und ETF-Rest sind ein Topf (ein Depot).
+- Keine farbigen Rahmen mehr in der Tabelle (vorher: „weniger als gewollt“, gewähltes Jahr, Entnahme).
+- Ausrichtung: Die globale Regel `.card + .card { margin-top }` verschob in allen Zwei-Spalten-Layouts
+  die zweite Karte nach unten. Jetzt nur noch direkt in `.main`. Alle Zwei-Spalten-Layouts 1,35 : 1.

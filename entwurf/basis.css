@@ -38,7 +38,7 @@ h2 { font-size: 15px; letter-spacing: var(--h2-ls, 0); text-transform: var(--h2-
 .card h2 { margin-bottom: 12px; }
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .card-head h2 { margin: 0; }
-.grid-heute { display: grid; gap: var(--gap); grid-template-columns: 1.5fr 1fr; align-items: start; }
+.grid-heute { display: grid; gap: var(--gap); grid-template-columns: 1.35fr 1fr; align-items: start; }
 .grid-heute .col { display: grid; gap: var(--gap); min-width: 0; }
 .grid-heute .hero { min-height: 300px; }
 .grid-monat { display: grid; gap: var(--gap); grid-template-columns: 1fr 1fr; }
