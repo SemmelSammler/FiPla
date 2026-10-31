@@ -15,14 +15,14 @@
     if (a.ausMonat == null) a.ausMonat = true;
     if (a.hauskaufJahr === undefined) a.hauskaufJahr = null;
     if (a.fehlZins == null) a.fehlZins = 0.06;
-    // Studienkredite neu aufgesetzt nach den KfW-Kontoauszügen vom 03.10.2026
+    // Studienkredite: Stand, Zins, Rate und Start trägst du unter „Deine Annahmen“ ein
     if (!a.kfwV2) {
-      a.kfwStand = "2026-10";
-      a.kfw1Rest = 14121.29; a.kfw1Zins = 0.0746; a.kfw1Rate = 500; a.kfw1Ab = null;
-      a.kfw2Rest = 5403.58; a.kfw2Zins = 0.0414; a.kfw2Rate = 100; a.kfw2Ab = "2027-01";   // Rate und Start KfW 2: Annahme, bitte prüfen
+      a.kfwStand = a.kfwStand || null;
+      a.kfw1Zins = a.kfw1Zins || 0; a.kfw1Rate = a.kfw1Rate || 0; a.kfw1Ab = a.kfw1Ab || null;
+      a.kfw2Zins = a.kfw2Zins || 0; a.kfw2Rate = a.kfw2Rate || 0; a.kfw2Ab = a.kfw2Ab || null;
       a.kfwV2 = true;
     }
-    if (a.sparAb === undefined) a.sparAb = "2027-03";
+    if (a.sparAb === undefined) a.sparAb = null;
     if (a.erhoehungMonat == null) a.erhoehungMonat = 5;
   }
   function mkLabel(v) { if (!v) return null; var p = String(v).split("-"); return MONL[+p[1] - 1] + " " + p[0]; }
@@ -100,7 +100,7 @@
     var fixItems;
     if (mv) {
       var byVal = function (l) { return l.slice().sort(function (x, z) { return pm(z) - pm(x); }); };
-      fixItems = (get.length || erst.length ? '<li class="zf-grp">Mit Laura geteilt</li>' + byVal(get).map(function (i) { return li(esc(i.beschreibung), pm(i), info(i)); }).join("") +
+      fixItems = (get.length || erst.length ? '<li class="zf-grp">Geteilt</li>' + byVal(get).map(function (i) { return li(esc(i.beschreibung), pm(i), info(i)); }).join("") +
           erst.map(function (i) { return '<li class="zf-minus"><span>' + esc(i.beschreibung) + '<em class="muted">zahlt dir ' + esc(i.beschreibung.replace(/^mietanteil\s*/i, "") || "jemand") + "</em></span><span class=\"num\">− " + eur(Math.abs(zWert(c, mv.mk, i))) + "</span></li>"; }).join("") +
           li("= dein Teil davon", mv.meinGeteilt, mv.geteilt ? Math.round(mv.meinGeteilt / mv.geteilt * 100) + " % von " + eur(mv.geteilt) : "", "zf-mine") + '<li class="zf-grp">Nur deine</li>' : "") +
         byVal(allein).map(function (i) { return li(esc(i.beschreibung), pm(i), info(i)); }).join("") +

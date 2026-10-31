@@ -263,3 +263,6 @@ body { padding-top: 0; }
 .rep-split { background: var(--surface2); border-radius: 14px; padding: 10px 14px; margin: 10px 0 14px; }
 .rep-split .mini-list li.rs-tot { font-weight: 800; border-top: 1px solid var(--line-strong); }
 .rep-split p { margin: 4px 0 0; }
+/* Abgleich */
+.sync-key { margin: 10px 0 6px; padding: 14px; border-radius: 14px; background: var(--surface2); font-size: 20px; font-weight: 800; letter-spacing: .08em; text-align: center; user-select: all; }
+.sync-srv { margin: 8px 0 4px; }

@@ -1,5 +1,6 @@
-/* BoSal — Entwurf 2: Budgetmonat, Kassensturz, offene Posten, Ausgaben nach Anteil.
-   Rechnet mit der echten Engine (logic.js) und den Daten aus seed.js. Alles nur im Speicher. */
+/* BoSal: Budgetmonat, Kassensturz, offene Posten, Ausgaben nach Anteil, Zukunft.
+   Rechnet mit der Engine aus logic.js. Deine Daten liegen nur im Browser bzw. verschlüsselt im Abgleich,
+   nie im Code. Beispieldaten gibt es nur, wenn seed.js mitgebaut wird (lokal zum Ausprobieren). */
 (function () {
   "use strict";
   var L = window.Logic, D = window.DEFAULTS, S = window.SEED;
@@ -13,19 +14,21 @@
   /* ---------- Zustand ---------- */
   // Zwei Modi: „echt“ (deine Daten, wird im Browser gespeichert) und „demo“ (Beispieldaten, nichts wird gespeichert)
   var STORE = "bosal.daten.v1";
-  // Feste Posten wie in der App des Nutzers (Stand 18.10.2026). Spotify stand dort versehentlich mit +21,99 €.
-  var AKTUELL = { "exp-01": 3427.74, "exp-02": 538, "exp-03": -1003.01, "exp-04": -500, "exp-06": -72, "exp-07": -86.89, "exp-10": -24.99, "exp-12": -21.99, "exp-13": -21.7, "exp-15": -8.99, "exp-17": -2.99, "exp-18": -300 };
-  // Genauere Suchbegriffe für echte Kontoauszüge: Reisekosten-Erstattungen sind kein Gehalt, nicht jede Überweisung von Laura ist Miete
-  var SUCH_ECHT = { "exp-01": "lohn - gehalt", "exp-02": "miete" };
-  // Deine Fixkosten ab November 2026 (aus deiner Fixkosten-CSV). Betrag = Zahlbetrag je Fälligkeit, gesamt
-  var FIX_ECHT = [{"id": "fx-miete", "beschreibung": "Miete", "typ": "Fixkosten", "betrag": -1007.27, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "dmb zwei", "stichtag": 25, "notiz": "Ab 11/26 1.007,27 € laut SEPA-Mandatsankündigung vom 19.10.26 (vorher 1.003,01 €). Laura erstattet ca. 538 €/Monat.", "kategorieId": "wohnen", "geteilt": true}, {"id": "fx-strom_gas", "beschreibung": "Strom/Gas-Abschlag", "typ": "Fixkosten", "betrag": -72, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "stadtwerke bochum", "stichtag": 0, "notiz": "Seit 05/26 72 € (vorher 76 €).", "kategorieId": "wohnen", "geteilt": true}, {"id": "fx-rundfunk", "beschreibung": "Rundfunkbeitrag", "typ": "Fixkosten", "betrag": -55.08, "anteil": 0.5, "rhythmus": "quartalsweise", "monate": [3, 6, 9, 12], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "rundfunk", "stichtag": 0, "notiz": "Hälftig mit Laura geteilt.", "kategorieId": "wohnen", "geteilt": false}, {"id": "fx-kfw", "beschreibung": "KfW-Studienkredit", "typ": "Schulden", "betrag": -500, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "kreditanstalt", "stichtag": 25, "notiz": "Zinsanteil sinkt monatlich (Okt 83,47 €), Rest Tilgung.", "kategorieId": "schulden", "geteilt": false}, {"id": "fx-essen", "beschreibung": "Haushaltsgeld Essen", "typ": "Fixkosten", "betrag": -300, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Dauerauftrag", "kk": false, "suchbegriff": "laura kruse", "stichtag": 25, "notiz": "Seit 06/26 300 € (vorher 250 €).", "kategorieId": "lebensmittel", "geteilt": false}, {"id": "fx-telekom", "beschreibung": "Festnetz/Internet", "typ": "Fixkosten", "betrag": -86.89, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "telekom deutschland", "stichtag": 0, "notiz": "Seit 04/26 +30 € gegenüber 56,89 € – Tarif prüfen.", "kategorieId": "vertraege", "geteilt": true}, {"id": "fx-klarmobil", "beschreibung": "Mobilfunk", "typ": "Fixkosten", "betrag": -24.99, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "klarmobil", "stichtag": 0, "notiz": "Grundpreis, Zusatzverbrauch möglich.", "kategorieId": "vertraege", "geteilt": false}, {"id": "fx-dticket", "beschreibung": "Deutschlandticket", "typ": "Fixkosten", "betrag": -63, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "abo 682318536", "stichtag": 0, "notiz": "", "kategorieId": "mobilitaet", "geteilt": false}, {"id": "fx-rechtsschutz", "beschreibung": "Rechtsschutzversicherung", "typ": "Fixkosten", "betrag": -341.9, "anteil": 0.5, "rhythmus": "jährlich", "monate": [6], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "rechtsschutz", "stichtag": 0, "notiz": "Hälftig mit Laura geteilt.", "kategorieId": "versicherung", "geteilt": false}, {"id": "fx-barmenia", "beschreibung": "Zusatz-Krankenversicherung", "typ": "Fixkosten", "betrag": -21.7, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "barmenia", "stichtag": 25, "notiz": "", "kategorieId": "versicherung", "geteilt": false}, {"id": "fx-fielmann", "beschreibung": "Brillenversicherung (Nulltarif)", "typ": "Fixkosten", "betrag": -10, "anteil": 1, "rhythmus": "jährlich", "monate": [1], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "nulltarifversicherung", "stichtag": 0, "notiz": "", "kategorieId": "versicherung", "geteilt": false}, {"id": "fx-bu", "beschreibung": "Berufsunfähigkeitsversicherung", "typ": "Fixkosten", "betrag": -70, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": true, "aktiv": true, "zahlweg": "offen", "kk": false, "suchbegriff": "", "stichtag": 0, "notiz": "Platzhalter – Anbieter und Beginn noch offen.", "kategorieId": "versicherung", "geteilt": false}, {"id": "fx-spotify", "beschreibung": "Spotify", "typ": "Fixkosten", "betrag": -21.99, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "PayPal", "kk": false, "suchbegriff": "spotify", "stichtag": 0, "notiz": "Letzte Abbuchung 08/26 nur 13,48 € – Tarif prüfen.", "kategorieId": "abos", "geteilt": false}, {"id": "fx-claude", "beschreibung": "Claude Pro", "typ": "Fixkosten", "betrag": -21.42, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Kreditkarte", "kk": true, "suchbegriff": "anthropic", "stichtag": 0, "notiz": "", "kategorieId": "abos", "geteilt": false}, {"id": "fx-urban_sports", "beschreibung": "Urban Sports Club", "typ": "Fixkosten", "betrag": -50, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": true, "aktiv": true, "zahlweg": "offen", "kk": false, "suchbegriff": "urban sports", "stichtag": 0, "notiz": "Platzhalter – Tarif noch offen. Am 01.08.26 0,01 € Kartenprüfung über Kreditkarte.", "kategorieId": "gesundheit", "geteilt": false}, {"id": "fx-prime", "beschreibung": "Amazon Prime", "typ": "Fixkosten", "betrag": -8.99, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "amznprime", "stichtag": 0, "notiz": "", "kategorieId": "abos", "geteilt": false}, {"id": "fx-steuer", "beschreibung": "Steuersoftware", "typ": "Fixkosten", "betrag": -35.99, "anteil": 1, "rhythmus": "jährlich", "monate": [12], "platzhalter": false, "aktiv": true, "zahlweg": "Lastschrift", "kk": false, "suchbegriff": "buhl-data", "stichtag": 0, "notiz": "Vermutlich WISO Steuer – prüfen, ob Abo oder Einzelkauf.", "kategorieId": "abos", "geteilt": false}, {"id": "fx-icloud", "beschreibung": "iCloud (an Laura)", "typ": "Fixkosten", "betrag": -2.99, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Dauerauftrag", "kk": false, "suchbegriff": "icloud", "stichtag": 0, "notiz": "", "kategorieId": "abos", "geteilt": false}, {"id": "fx-microsoft", "beschreibung": "Microsoft (Speicher?)", "typ": "Fixkosten", "betrag": -2, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "PayPal", "kk": false, "suchbegriff": "microsoft payments", "stichtag": 0, "notiz": "Vermutlich Microsoft 365 Basic.", "kategorieId": "abos", "geteilt": false}, {"id": "fx-konto", "beschreibung": "Kontoführung", "typ": "Fixkosten", "betrag": -11, "anteil": 1, "rhythmus": "monatlich", "monate": [], "platzhalter": false, "aktiv": true, "zahlweg": "Kontobelastung", "kk": false, "suchbegriff": "entgeltabrechnung", "stichtag": 0, "notiz": "", "kategorieId": "vertraege", "geteilt": false}];
-  var FIX_OVR = { mk: "2026-10", ovr: {"fx-miete": -1003.01} };   // Oktober: Miete noch zum alten Betrag bezahlt
+  // Neutrale Startwerte für die Zukunft (deine eigenen trägst du unter „Deine Annahmen“ ein)
+  var NEUTRAL_FI = {
+    startjahr: now.getFullYear(), startalter: 30, endalter: 70, monateJahr1: 12 - now.getMonth(),
+    einnahmen: 0, wachstumEinnahmen: 0.03, einnahmenDeckel: 0, fixkosten: 0, wachstumFix: 0.02, fixkostenDeckel: 0,
+    etfRendite: 0.05, notgroschenZins: 0, notgroschenZiel: 10000, notgroschenRate: 0, notgroschenStart: 0,
+    hausEkZiel: 0, hausEkZielAusHauskauf: true, hausEkAnteil: 0.5, hausEkRate: 0, hausEkStart: 0,
+    kfw1Sonder: 0, kindSparrate: 0, kfw1Rest: 0, kfw2Rest: 0, autoPauschale: 0, lebensqualitaet: 0, etfMindest: 0, etfStart: 0,
+    kfw1Plan: {}, kfw1PlanDefault: 0, kfw2Plan: {}, kfw2PlanDefault: 0, events: []
+  };
   function makeState(modus) {
-    var demo = modus === "demo";
+    var demo = modus === "demo" && !!S;
     var st = {
-      modus: modus, version: 2, vgImSaldo: false,
-      transactions: demo ? clone(S.transactions) : [], kk: [], expected: clone(S.expected),
-      categories: clone(D.categories), months: {}, fi: clone(D.fi),
+      modus: demo ? "demo" : "echt", version: 2, vgImSaldo: false, angelegt: demo,
+      transactions: demo ? clone(S.transactions) : [], kk: [], expected: demo ? clone(S.expected) : [],
+      categories: clone(D.categories), months: {}, fi: demo && D.fi ? clone(D.fi) : clone(NEUTRAL_FI),
       active: CUR,                       // Budgetmonat, unabhängig vom Kalender
       startedEarly: null,                // Datum, falls früh gestartet
       konten: { giro: null, konto2: null, kk: null }, kontoAt: null, importAt: null, kontoEinzeln: false,
@@ -37,12 +40,6 @@
       frozen: {},                        // abgeschlossene Monate: { mk: Endstand }
       demoImported: false, importLog: []
     };
-    st.expected = st.expected.filter(function (i) { return AKTUELL[i.id] != null; });
-    st.expected.forEach(function (i) { i.betrag = AKTUELL[i.id]; if (!demo && SUCH_ECHT[i.id]) i.suchbegriff = SUCH_ECHT[i.id]; });
-    if (!demo) {
-      st.expected = st.expected.filter(function (i) { return i.typ === "Einnahme"; }).concat(clone(FIX_ECHT));
-      if (st.active === FIX_OVR.mk) st.overrides[FIX_OVR.mk] = clone(FIX_OVR.ovr);
-    }
     L.enrichAll(st);
     freezePast(st);
     if (demo) {
@@ -69,11 +66,13 @@
   }
   var saveErr = null;
   function save() {
-    if (state.modus !== "echt") return;
-    try { localStorage.setItem(STORE, JSON.stringify(state)); saveErr = null; } catch (e) { saveErr = String(e && e.message || e); }
+    if (state.modus !== "echt" || state.angelegt === false) return;
+    var json = JSON.stringify(state);
+    try { localStorage.setItem(STORE, json); saveErr = null; } catch (e) { saveErr = String(e && e.message || e); }
+    syncChanged(json);
   }
   var state = loadSaved(), firstRun = !state;
-  if (!state) state = makeState("demo");
+  if (!state) state = makeState(S ? "demo" : "echt");
 
   var ART = {
     forderung: { label: "Mir geschuldet", short: "schuldet mir", sign: 1, ico: "↙", hint: "Jemand gibt dir noch Geld zurück." },
@@ -96,7 +95,7 @@
   var PALETTES = [["violett", "Violett", "#6A5AE0", "#EB4F78"], ["ozean", "Ozean", "#1E6FD9", "#18B6A6"], ["wald", "Wald", "#2F7D4F", "#A3B83A"], ["koralle", "Koralle", "#E2574C", "#F2A93B"], ["sand", "Sand", "#9A7652", "#D9A86C"],
     ["beere", "Beere", "#B0306A", "#7A3FD1"], ["mint", "Mint", "#13A58A", "#7DD3A8"], ["petrol", "Petrol", "#0E6E80", "#3AA0C8"], ["gold", "Gold", "#B8860B", "#E8A33A"], ["graphit", "Graphit", "#3F4656", "#8A93A6"]];
   var MODES = [["hell", "Hell"], ["dunkel", "Dunkel"], ["system", "Wie System"]];
-  var ui = { inclFix: true, lay_monat: "a", lay_offen: "b", modal: firstRun ? { type: "welcome" } : null, palette: "violett", mode: "hell", custom: null, view: "monat", repMonth: null, shareMode: true, sortOpen: false, skipped: {}, toast: null, addArt: "forderung", showDone: false };
+  var ui = { inclFix: true, lay_monat: "a", lay_offen: "b", modal: firstRun ? { type: "welcome" } : null, palette: "violett", mode: "system", custom: null, view: "monat", repMonth: null, shareMode: true, sortOpen: false, skipped: {}, toast: null, addArt: "forderung", showDone: false };
 
   /* ---------- Hilfen ---------- */
   var fmt = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -258,10 +257,7 @@
   }
   /* ---------- Fixkosten-CSV (eigene Aufstellung): Rhythmus, Anteil, Zahlweg ---------- */
   var FIX_KAT = { Wohnen: "wohnen", Kredite: "schulden", Haushalt: "lebensmittel", Kommunikation: "vertraege", "Mobilität": "mobilitaet", Versicherungen: "versicherung", Abos: "abos", Sport: "gesundheit", Bank: "vertraege" };
-  // Bewährte Suchbegriffe (Empfänger oder Verwendungszweck im Kontoauszug)
-  var FIX_SUCH = { miete: "dmb zwei", strom_gas: "stadtwerke bochum", rundfunk: "rundfunk", kfw: "kreditanstalt", essen: "laura kruse", telekom: "telekom deutschland", klarmobil: "klarmobil",
-    dticket: "abo 682318536", rechtsschutz: "rechtsschutz", barmenia: "barmenia", fielmann: "nulltarifversicherung", spotify: "spotify", claude: "anthropic", urban_sports: "urban sports",
-    prime: "amznprime", steuer: "buhl-data", icloud: "icloud", microsoft: "microsoft payments", konto: "entgeltabrechnung" };
+  var FIX_SUCH = {};   // Suchbegriffe ergeben sich aus Empfänger bzw. Verwendungszweck der letzten Buchung
   var RHYTHMUS_N = { monatlich: 12, zweimonatlich: 6, quartalsweise: 4, halbjaehrlich: 2, "halbjährlich": 2, jaehrlich: 1, "jährlich": 1 };
   function isFixCsv(text) { return text.slice(0, 300).toLowerCase().indexOf("betrag_monat_mein_anteil") !== -1; }
   function parseFixCsv(text, activeMk) {
@@ -846,7 +842,10 @@
     var fp = '<div class="card"><div class="card-head"><h2>Feste Posten</h2><div class="btn-row" style="margin:0">' + btn("Fixkosten-CSV importieren", "pickCsv", "", "btn-sm") + btn("＋ Posten", "fpAdd", "", "btn-sm btn-primary") + "</div></div>" +
       '<p class="muted small">Antippen zum Bearbeiten. „Betrag“ ist die einzelne Zahlung, „pro Monat“ dein Anteil umgerechnet auf einen Monat (damit rechnet die Zukunft). Der Monat rechnet mit der ganzen Zahlung im Fälligkeitsmonat.</p>' +
       '<div class="fp-th"><span>Posten</span><span class="r">Betrag</span><span class="r">pro Monat</span><span>zuletzt erkannt</span><span></span></div>' + lists + "</div>";
-    return '<h1 class="page-t">Mehr</h1><div class="z-stack">' + daten + fp + '<div class="card">' + palettePicker() + "</div></div>";
+    var phoneCard = isPhone() ? '<ul class="m-list">' +
+      '<li><button class="m-main" data-act="go" data-view="zukunft"><span class="m-t">Zukunft</span><span class="m-s">Wann bist du finanziell frei?</span></button>' + ICON.chev + "</li>" +
+      '<li><button class="m-main" data-act="undo"' + (hist.past.length ? "" : " disabled") + '><span class="m-t">Rückgängig</span><span class="m-s">' + esc(hist.past.length ? hist.past[hist.past.length - 1].label : "nichts zum Rückgängigmachen") + "</span></button></li></ul>" : "";
+    return '<h1 class="page-t">Mehr</h1><div class="z-stack">' + phoneCard + syncCard() + daten + fp + '<div class="card">' + palettePicker() + "</div></div>";
   }
 
   /* ================= Dialoge ================= */
@@ -864,12 +863,22 @@
         '<div class="m-foot">' + btn("Abbrechen", "closeModal", "", "btn-ghost") + (m.step >= 2 ? btn("Fertig", "finishKS", "", "btn-primary") : "") + "</div>";
       if (m.step >= 2 && vs.length) body = body.replace("</ol>", '<li><b>3 · Danach</b><p class="muted small">' + vs.length + " Buchung(en) passen zu offenen Posten. Du bestätigst sie gleich auf der Monatsseite.</p></li></ol>");
     }
+    if (m.type === "syncConnect") {
+      body = "<h2>Mit Schlüssel verbinden</h2><p class=\"muted\">Den Schlüssel findest du auf deinem anderen Gerät unter Mehr → Abgleich → Schlüssel zeigen.</p>" +
+        '<div class="form"><label class="grow"><span>Schlüssel</span><input id="sy-key" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off" spellcheck="false"></label>' +
+        (httpOrigin ? "" : '<label class="grow"><span>Server</span><input id="sy-srv" value="' + esc(syncCfg.server || "") + '" placeholder="https://bosal.pages.dev" autocomplete="off" spellcheck="false"></label>') + "</div>" +
+        '<div class="m-foot">' + btn("Abbrechen", "closeModal", "", "btn-ghost") + btn("Verbinden", "syncConnect", "", "btn-primary") + "</div>";
+    }
+    if (m.type === "syncKonflikt") {
+      body = "<h2>Zwei verschiedene Stände</h2><p class=\"muted\">Auf einem anderen Gerät wurde " + (m.remote.at ? mWann(m.remote.at) : "inzwischen") + " etwas geändert. Hier gibt es auch Änderungen, die noch nicht abgeglichen sind. Welcher Stand soll gelten?</p>" +
+        '<div class="m-foot m-foot-wrap">' + btn("Stand vom anderen Gerät", "syncTakeRemote", "", "") + btn("Meine Version behalten", "syncKeepMine", "", "btn-primary") + "</div>";
+    }
     if (m.type === "welcome") {
-      body = "<h2>Willkommen bei BoSal</h2><p class=\"muted\">Testversion. Du kannst sie mit deinen echten Daten ausprobieren.</p><ul class=\"startlist\">" +
-        "<li><b>Mit deinen Daten:</b> Du importierst die CSV deines Girokontos (und der Kreditkarte) und trägst deine Kontostände ein. Alles bleibt nur in diesem Browser auf diesem Gerät, nichts geht ins Internet.</li>" +
-        "<li><b>Beispieldaten:</b> zum Ausprobieren. Es wird nichts gespeichert.</li>" +
-        "<li>Sichern: Mehr → Backup speichern. Löscht dein Browser seine Daten, ist sonst alles weg.</li></ul>" +
-        '<div class="m-foot">' + btn("Beispieldaten ansehen", "closeModal", "", "btn-ghost") + btn("Mit meinen Daten starten", "startEcht", "", "btn-primary") + "</div>";
+      body = "<h2>Willkommen bei BoSal</h2><ul class=\"startlist\">" +
+        "<li><b>Schon auf einem anderen Gerät?</b> Verbinde dich mit deinem Abgleich-Schlüssel, dann sind deine Daten gleich da.</li>" +
+        "<li><b>Neu anfangen:</b> CSV deines Girokontos importieren und Kontostände eintragen.</li>" +
+        "<li><b>Backup:</b> eine gespeicherte BoSal-Datei laden.</li></ul>" +
+        '<div class="m-foot m-foot-wrap">' + (S ? btn("Beispieldaten", "closeModal", "", "btn-ghost") : "") + btn("Backup laden", "loadBackup", "", "btn-ghost") + btn("Neu anfangen", "startEcht", "", "") + btn("Mit Schlüssel verbinden", "syncConnectAsk", "", "btn-primary") + "</div>";
     }
     if (m.type === "start") {
       var R = rechnung(), nx = L.nextMonth(state.active);
@@ -896,7 +905,7 @@
       var nurA = m.nur != null ? m.nur : !!t.split;
       body = "<h2>Buchung teilen</h2><p class=\"muted\">" + esc(t.empfaenger) + " · " + eur(t.betrag) + "</p>" +
         '<div class="seg seg-sm st-mode"><button class="seg-b' + (!nurA ? " on" : "") + '" data-act="teilMode" data-v="0">Person zahlt mir zurück</button><button class="seg-b' + (nurA ? " on" : "") + '" data-act="teilMode" data-v="1">Nur für die Auswertung</button></div>' +
-        '<div class="form"><label class="grow"><span>Mit wem?' + (nurA ? " (optional)" : "") + '</span><input id="s-person" placeholder="z. B. Laura" value="' + esc(t.split ? t.split.person || "" : "") + '"></label>' +
+        '<div class="form"><label class="grow"><span>Mit wem?' + (nurA ? " (optional)" : "") + '</span><input id="s-person" placeholder="z. B. Anna" value="' + esc(t.split ? t.split.person || "" : "") + '"></label>' +
         '<label><span>Ihr/sein Anteil</span><input id="s-betrag" class="in-num" inputmode="decimal" value="' + fmt.format(t.split ? t.split.betrag : Math.abs(t.betrag) / 2) + '"></label></div>' +
         '<p class="muted small">' + (nurA ? "Ändert nur die Ausgaben-Auswertung („Mein Anteil“). Es entsteht kein offener Posten, Monat und Zukunft bleiben gleich. Gut, wenn ihr es schon anders verrechnet habt."
           : "Daraus wird „schuldet mir“ im Tab Offen. In den Ausgaben zählt nur noch dein Teil. Kommt das Geld zurück, erkennt der Import es.") + "</p>" +
@@ -926,6 +935,299 @@
     }).join("") + '<label class="pal' + (ui.palette === "eigene" ? " on" : "") + '"><input type="color" data-act="customColor" value="' + ui.custom + '" class="pal-sw pal-color">Eigene</label></div></div>';
   }
 
+  /* ================= iPhone-Ansicht (Design D) ================= */
+  // Auf schmalen Bildschirmen zeigt BoSal Monat und Offen in der Handy-Ansicht, dazu eine Tab-Leiste
+  // und „Neu eintragen“ als Blatt von unten. Alle anderen Seiten passen sich nur in der Breite an.
+  var PHONE = window.matchMedia ? window.matchMedia("(max-width: 700px)") : { matches: false };
+  function isPhone() { return !!PHONE.matches; }
+  if (PHONE.addEventListener) PHONE.addEventListener("change", function () { render(); });
+  function svg(d, w) { return '<svg width="' + (w || 24) + '" height="' + (w || 24) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + "</svg>"; }
+  var ICON = {
+    monat: svg('<rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/>'),
+    offen: svg('<circle cx="9" cy="8" r="3.2"/><path d="M3 19c.8-3.2 3.2-5 6-5s5.2 1.8 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c2.5.2 4.3 1.8 5 4.8"/>'),
+    ausgaben: svg('<path d="M5 20V11M12 20V5M19 20v-6"/>'),
+    mehr: svg('<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>'),
+    plus: svg('<path d="M12 5v14M5 12h14"/>', 26),
+    sync: svg('<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>', 20),
+    close: svg('<path d="M6 6l12 12M18 6L6 18"/>', 18),
+    mir: svg('<path d="M17 7L7 17M7 9v8h8"/>', 16),
+    ich: svg('<path d="M7 17L17 7M9 7h8v8"/>', 16),
+    kal: svg('<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/>', 16),
+    chev: svg('<path d="M9 6l6 6-6 6"/>', 16)
+  };
+  var WT = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+  function mWann(ts) {
+    var d = new Date(ts), h = d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }), t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    var diff = Math.round((t0 - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000);
+    return diff === 0 ? "heute, " + h : diff === 1 ? "gestern, " + h : "am " + d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) + ", " + h;
+  }
+  function mNum(v, sign) { var a = fmt.format(Math.abs(v)); return sign ? (v > 0.005 ? "+" : v < -0.005 ? "−" : "") + a : (v < -0.005 ? "−" : "") + a; }
+  function mAmt(v) { return '<span class="m-amt num' + (v > 0.005 ? " pos" : "") + '">' + mNum(v, true) + " €</span>"; }
+  function mHead(title, btnHtml, cap) { return '<div class="m-head"><h1>' + esc(title) + "</h1>" + (btnHtml || "") + "</div>" + (cap ? '<p class="m-cap">' + cap + "</p>" : ""); }
+  function mIb(act, label, icon, extra) { return '<button class="m-ib" data-act="' + act + '"' + (extra || "") + ' aria-label="' + label + '">' + icon + "</button>"; }
+  function personSaldi() {
+    var map = {};
+    openList().forEach(function (o) { if (!o.person) return; var p = map[o.person] = map[o.person] || { name: o.person, v: 0, n: 0, list: [] }; p.v += signOf(o) * o.betrag; p.n++; p.list.push(o); });
+    return Object.keys(map).map(function (k) { return map[k]; }).sort(function (a, b) { return Math.abs(b.v) - Math.abs(a.v); });
+  }
+
+  function mMonat() {
+    if (ui.month && ui.month > state.active) return viewVorschau(ui.month);
+    var R = rechnung(), mk = R.mk, p = R.parts, sync = syncState(), vs = vorschlaege();
+    var y = +mk.slice(0, 4), mo = +mk.slice(5, 7), last = new Date(y, mo, 0).getDate();
+    var tage = mk < CUR ? 0 : mk === CUR ? last - now.getDate() + 1 : last;
+    var offenSum = p.forderung + p.schuld + p.schwebend + p.ruecklage + p.geplant + p.uebertrag;
+    function stat(l, v, sign) { return '<div><span>' + l + '</span><b class="num' + (sign && v > 0.005 ? " pos" : "") + '">' + mNum(v, sign) + "</b></div>"; }
+    var hero = '<section class="m-card m-hero"><span class="m-lab">Übrig bis ' + last + ". " + mName(mk) + '</span><span class="m-big num' + (R.hasKonten && R.total < 0 ? " neg" : "") + '">' + (R.hasKonten ? eur(R.total) : "?") + "</span>" +
+      '<span class="m-sub">' + (R.hasKonten ? (tage ? "≈ " + eur(R.total / tage) + " pro Tag · noch " + tage + " Tage" : "") : "Mach einen Kassensturz, dann rechnet BoSal.") + "</span>" +
+      (R.hasKonten ? '<div class="m-stats">' + stat("Konten", p.konten + p.vorgemerkt) + stat("Feste Posten", p.ein + p.fix + p.carry, true) + stat("Offene Posten", offenSum, true) + "</div>" : "") + "</section>";
+
+    // Zu tun: nur was jetzt wirklich ansteht
+    var todo = [];
+    if (!sync.ok) todo.push('<li><span class="m-chip warn">!</span><div class="m-main"><span class="m-t">Kassensturz</span><span class="m-s">' + esc(sync.ack ? "Kontostand ohne neuen Import" : !state.importAt && state.konten.giro == null ? "noch keiner in diesem Monat" : !state.importAt ? "Import fehlt" : "Kontostände fehlen") + "</span></div>" + '<button class="m-act" data-act="kassensturz">Jetzt</button></li>');
+    vs.forEach(function (v) { todo.push('<li><span class="m-chip pos">✓</span><div class="m-main"><span class="m-t">' + esc((v.o.person ? v.o.person + ": " : "") + v.o.text) + '</span><span class="m-s">erledigt? ' + dLabel(v.t.datum) + " · " + eur(v.t.betrag) + '</span></div><button class="m-act" data-act="settle" data-o="' + v.o.id + '" data-t="' + v.t.id + '">Ja</button></li>'); });
+    var un = state.transactions.concat(state.kk.filter(function (t) { return !t.ausgleich; })).filter(function (t) { return t.effMonat === mk && isUnsorted(t); }).length;
+    if (un) todo.push('<li><span class="m-chip">' + un + '</span><div class="m-main"><span class="m-t">Ohne Kategorie</span><span class="m-s">' + un + (un === 1 ? " Buchung" : " Buchungen") + " im " + mName(mk) + '</span></div><button class="m-act" data-act="mSort">Sortieren</button></li>');
+    var ps = personSaldi()[0];
+    if (ps && Math.abs(ps.v) >= 1) todo.push('<li><span class="m-chip">' + esc(ps.name.slice(0, 1).toUpperCase()) + '</span><div class="m-main"><span class="m-t">' + esc(ps.v > 0 ? ps.name + " schuldet dir" : "Du schuldest " + ps.name) + '</span><span class="m-s">' + eur(Math.abs(ps.v)) + " · " + ps.n + (ps.n === 1 ? " Posten" : " Posten") + "</span></div>" + '<button class="m-act" data-act="mPerson" data-p="' + esc(ps.name) + '">Ansehen</button></li>');
+    var todoHtml = '<h2 class="m-h2">Zu tun</h2><ul class="m-list">' + (todo.length ? todo.slice(0, 4).join("") : '<li><span class="m-s">Alles erledigt.</span></li>') + "</ul>";
+
+    // Als Nächstes: feste Posten nach Tag, offene zuerst
+    function hits(it) { return (it.kk ? state.kk : state.transactions).filter(function (t) { return t.itemId === it.id; }).sort(function (a, b) { return a.datum < b.datum ? 1 : -1; }); }
+    var rows = R.c.rows.filter(function (r) { return Math.abs(r.soll) > 0.005 || Math.abs(r.ist) > 0.005; }).map(function (r) {
+      var h = hits(r.item), inM = h.find(function (t) { return t.effMonat === mk; }), day = h[0] ? +h[0].datum.slice(8, 10) : 32;
+      return { r: r, done: Math.abs(rest(r)) < 0.005, day: day, inM: inM };
+    }).sort(function (a, b) { return (a.done - b.done) || (a.day - b.day); });
+    var offenN = rows.filter(function (x) { return !x.done; }).length, show = ui.mAlleFest ? rows : rows.filter(function (x) { return !x.done; }).slice(0, 4);
+    var festHtml = '<h2 class="m-h2"><span>Als Nächstes</span><span class="m-h2-r">' + (rows.length - offenN) + " von " + rows.length + " erledigt</span></h2>" +
+      '<ul class="m-list">' + (show.length ? show.map(function (x) {
+        var it = x.r.item, d = Math.min(x.day, last), sub = x.done ? (x.inM ? (isVg(x.inM) ? "vorgemerkt " : "abgebucht ") + dLabel(x.inM.datum) : x.r.hand != null ? "von Hand abgehakt" : "erledigt") : x.day < 32 ? WT[new Date(y, mo - 1, d).getDay()] + ", " + d + ". " + MON[mo - 1] : "noch offen";
+        return '<li class="m-tickrow' + (x.done ? " done" : "") + '"><button class="m-tick' + (x.done ? " on" : "") + '" data-act="haken" data-id="' + it.id + '" aria-pressed="' + x.done + '" aria-label="' + esc(it.beschreibung) + (x.done ? " ist erledigt" : " abhaken") + '"><i>' + (x.done ? "✓" : "") + "</i></button>" +
+          '<div class="m-main"><span class="m-t">' + esc(it.beschreibung) + '</span><span class="m-s">' + esc(sub) + "</span></div>" + mAmt(x.r.soll) + "</li>";
+      }).join("") : '<li><span class="m-s">Alle festen Posten sind erledigt.</span></li>') + "</ul>" +
+      (rows.length > show.length || ui.mAlleFest ? '<button class="m-more" data-act="mAlleFest">' + (ui.mAlleFest ? "Nur offene zeigen" : "Alle " + rows.length + " festen Posten") + "</button>" : "");
+
+    // So rechnet BoSal: die ganze Rechnung, dazu die Kontostände
+    function line(l, v) { return Math.abs(v) < 0.005 ? "" : "<li><span class=\"m-t2\">" + l + "</span>" + mAmt(v) + "</li>"; }
+    var k = state.konten;
+    var calc = '<details class="m-card m-calc" data-key="mcalc"' + (ui.open_mcalc ? " open" : "") + '><summary><span>So rechnet BoSal</span>' + ICON.chev + "</summary>" +
+      '<ul class="m-plain">' + line("Auf den Konten", p.konten) + line("Vorgemerkt, noch nicht im Kontostand", p.vorgemerkt) + line("Kommt noch rein", p.ein) + line("Geht noch ab", p.fix) + line("Aus " + mName(L.prevMonth(mk)) + " noch offen", p.carry) +
+      Object.keys(ART).map(function (a) { return line(ART[a].label, p[a]); }).join("") + line("Zwischen Monaten verschoben", p.uebertrag) +
+      '<li class="m-sum"><span class="m-t2">Übrig</span><span class="m-amt num">' + (R.hasKonten ? eur(R.total) : "?") + "</span></li></ul>" +
+      '<div class="konten m-konten">' + kontoField("giro", "Girokonto", k.giro) + kontoField("konto2", "2. Konto", k.konto2) + kontoField("kk", "Kreditkarte (offen)", k.kk) + "</div>" +
+      (R.vg.length ? '<label class="chk m-chk"><input type="checkbox" data-act="vgSaldo"' + (state.vgImSaldo ? " checked" : "") + "> Kontostand enthält die vorgemerkten Umsätze schon</label>" : "") + "</details>";
+
+    var next = [], m2 = mk; for (var i = 0; i < 3; i++) { m2 = L.nextMonth(m2); next.push(m2); }
+    var kommend = '<h2 class="m-h2">Nächste Monate</h2><div class="m-next">' + next.map(function (m) {
+      var v = vorschau(m);
+      return '<button class="m-card m-nm" data-act="openMonth" data-month="' + m + '"><span class="m-s">' + mName(m) + '</span><b class="num' + (v.total < 0 ? " neg" : "") + '">' + eur0(v.total) + "</b></button>";
+    }).join("") + "</div>";
+
+    var cap = (state.kontoAt ? "Kassensturz " + mWann(state.kontoAt) : "Noch kein Kassensturz") + (state.startedEarly ? " · früh gestartet" : "");
+    var monthBtns = (state.prevCtx ? '<button class="m-link" data-act="reopenAsk">← ' + mName(state.prevCtx.mk) + "</button>" : "") + '<button class="m-link" data-act="startNext">' + mName(L.nextMonth(mk)) + " starten →</button>";
+    return mHead(mName(mk), mIb("kassensturz", "Kassensturz machen", ICON.sync), cap) + hero + todoHtml + festHtml + '<div class="m-gap"></div>' + calc + kommend + '<div class="m-monthbtns">' + monthBtns + "</div>";
+  }
+
+  function mOffen() {
+    var ps = personSaldi(), all = openList();
+    var sel = ps.find(function (x) { return x.name === ui.mPerson; }) || ps[0];
+    var bek = all.filter(function (o) { return o.art === "forderung"; }).reduce(function (s, o) { return s + o.betrag; }, 0);
+    var zahl = all.filter(function (o) { return o.art === "schuld"; }).reduce(function (s, o) { return s + o.betrag; }, 0);
+    function row(o) {
+      if (ui.editO === o.id) return oEdit(o);
+      var s = signOf(o), pers = !!o.person, kurz = function (mk) { return MON[+mk.slice(5, 7) - 1]; }, wann = o.monat && o.monat > state.active ? "für " + kurz(o.monat) : o.seit !== state.active ? "seit " + kurz(o.seit) : "";
+      var chip = pers ? '<span class="m-chip ' + (s > 0 ? "pos" : "neutral") + '">' + (s > 0 ? ICON.mir : ICON.ich) + "</span>" : '<span class="m-chip neutral">' + ICON.kal + "</span>";
+      var sub = (pers ? (s > 0 ? "schuldet dir" : "du schuldest") : ART[o.art].label) + (wann ? " · " + wann : "");
+      return '<li>' + chip + '<button class="m-main" data-act="editO" data-o="' + o.id + '" aria-label="' + esc(o.text) + ' bearbeiten"><span class="m-t">' + esc(o.text) + '</span><span class="m-s">' + esc(sub) + "</span></button>" + mAmt(s * o.betrag) +
+        '<button class="m-tick m-tick-r" data-act="done" data-o="' + o.id + '" aria-label="' + esc(o.text) + ' erledigt"><i></i></button></li>';
+    }
+    var tiles = ps.length ? '<div class="m-tiles">' + ps.map(function (x) {
+      return '<button class="m-tile' + (sel && x.name === sel.name ? " on" : "") + '" data-act="mPerson" data-p="' + esc(x.name) + '" aria-pressed="' + (sel && x.name === sel.name) + '"><span class="m-tile-h"><span class="m-av">' + esc(x.name.slice(0, 1).toUpperCase()) + "</span><b>" + esc(x.name) + "</b></span>" +
+        '<span class="m-tile-v num' + (x.v > 0.005 ? " pos" : "") + '">' + mNum(x.v, true) + ' €</span><span class="m-s">' + x.n + (x.n === 1 ? " Posten" : " Posten") + "</span></button>";
+    }).join("") + "</div>" : "";
+    var mit = sel ? '<h2 class="m-h2">Mit ' + esc(sel.name) + '</h2><ul class="m-list olist">' + sel.list.map(row).join("") + "</ul>" : "";
+    var ohne = all.filter(function (o) { return !o.person; });
+    var ohneHtml = ohne.length ? '<h2 class="m-h2">Ohne Person</h2><ul class="m-list olist">' + ohne.map(row).join("") + "</ul>" : "";
+    var done = state.offen.filter(function (o) { return o.erledigt; });
+    var doneHtml = done.length ? '<button class="m-more" data-act="toggleDone">' + (ui.showDone ? "Erledigte ausblenden" : "Erledigt (" + done.length + ")") + "</button>" +
+      (ui.showDone ? '<ul class="m-list olist">' + done.slice(-30).reverse().map(function (o) {
+        if (ui.editO === o.id) return oEdit(o);
+        return '<li class="done"><button class="m-main" data-act="editO" data-o="' + o.id + '"><span class="m-t">' + esc((o.person ? o.person + " · " : "") + o.text) + '</span><span class="m-s">' + esc(o.erledigtWie || "erledigt") + "</span></button>" + mAmt(signOf(o) * o.betrag) + '<button class="m-act" data-act="reopenItem" data-o="' + o.id + '">Öffnen</button></li>';
+      }).join("") + "</ul>" : "") : "";
+    var cap = all.length ? 'Du bekommst <b class="pos">' + eur(bek) + "</b> · du zahlst <b>" + eur(zahl) + "</b>" : "Nichts offen.";
+    return mHead("Offen", mIb("mNeu", "Neu eintragen", ICON.plus.replace(/26/g, "20")), cap) + tiles + mit + ohneHtml + doneHtml;
+  }
+
+  /* Neu eintragen: Blatt von unten, Betrag über den Ziffernblock */
+  var M_ARTEN = [["person", "Person"], ["ruecklage", "Rücklage"], ["geplant", "Geplant"], ["schwebend", "Schwebend"]];
+  function mSheetOpen(art) {
+    var freq = {}; state.offen.forEach(function (o) { if (o.person) freq[o.person] = (freq[o.person] || 0) + 1; });
+    var top = Object.keys(freq).sort(function (a, b) { return freq[b] - freq[a]; })[0] || "";
+    ui.sheet = { art: art || "person", dir: 1, richtung: -1, person: ui.mPerson || top, neu: !(ui.mPerson || top), betrag: "", text: "", monat: state.active, kat: "freizeit" };
+  }
+  function mBetrag(b) { if (!b) return 0; var n = parseFloat(b.replace(",", ".")); return isNaN(n) ? 0 : n; }
+  function mBetragTxt(b) { if (!b) return "0 €"; var p = b.split(","); return fmt0.format(+p[0] || 0) + (p.length > 1 ? "," + p[1] : "") + " €"; }
+  function mSheet() {
+    var s = ui.sheet; if (!s) return "";
+    var cats = state.categories.filter(function (c) { return c.typ === "ausgabe" && !c.system; });
+    var freq = {}; state.offen.forEach(function (o) { if (o.person) freq[o.person] = (freq[o.person] || 0) + 1; });
+    var top = Object.keys(freq).sort(function (a, b) { return freq[b] - freq[a]; }).slice(0, 2);
+    if (s.person && !s.neu && top.indexOf(s.person) === -1) top = [s.person].concat(top).slice(0, 2);
+    var P = s.person || "Person", betragTxt = mBetragTxt(s.betrag), ziel = s.text ? " für " + s.text : "";
+    var satz = s.art === "person" ? (s.dir > 0 ? P + " schuldet dir " + betragTxt + ziel : "Du schuldest " + P + " " + betragTxt + ziel)
+      : s.art === "ruecklage" ? "Rücklage " + betragTxt + ziel + " im " + mName(s.monat)
+      : s.art === "geplant" ? (s.richtung > 0 ? "Einnahme " : "Ausgabe ") + betragTxt + ziel + " im " + mName(s.monat)
+      : "Schon gekauft, noch nicht abgebucht: " + betragTxt + ziel;
+    function seg(list, cur, act) { return '<div class="m-seg" role="radiogroup" style="grid-template-columns: repeat(' + list.length + ', minmax(0, 1fr))">' + list.map(function (x) { return '<button role="radio" aria-checked="' + (x[0] === cur) + '" class="' + (x[0] === cur ? "on" : "") + '" data-act="' + act + '" data-v="' + x[0] + '">' + esc(x[1]) + "</button>"; }).join("") + "</div>"; }
+    var ms = [], m = state.active; for (var i = 0; i < 7; i++) { ms.push(m); m = L.nextMonth(m); }
+    var monatSel = '<label class="m-field"><span>Monat</span><select data-act="mf" data-f="monat">' + ms.map(function (x) { return '<option value="' + x + '"' + (x === s.monat ? " selected" : "") + ">" + mLabel(x, true) + "</option>"; }).join("") + "</select></label>";
+    var katSel = '<label class="m-field"><span>Kategorie</span><select data-act="mf" data-f="kat">' + cats.map(function (c) { return '<option value="' + c.id + '"' + (c.id === s.kat ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</select></label>";
+    var body = seg(M_ARTEN, s.art, "mArt");
+    if (s.art === "person") {
+      body += '<div class="m-chips" role="radiogroup" aria-label="Person">' + top.map(function (n) { return '<button role="radio" aria-checked="' + (!s.neu && n === s.person) + '" class="' + (!s.neu && n === s.person ? "on" : "") + '" data-act="mPick" data-p="' + esc(n) + '">' + esc(n) + "</button>"; }).join("") +
+        '<button role="radio" aria-checked="' + s.neu + '" class="' + (s.neu || !top.length ? "on" : "") + '" data-act="mPickNeu">+ Neu</button></div>' +
+        (s.neu || !top.length ? '<label class="m-field"><span>Name</span><input data-act="mf" data-f="person" value="' + esc(s.neu ? s.person : "") + '" placeholder="z. B. Anna" autocomplete="off"></label>' : "") +
+        seg([["1", P + " schuldet mir"], ["-1", "Ich schulde " + P]], String(s.dir), "mDir");
+    }
+    if (s.art === "geplant") body += seg([["-1", "Ausgabe"], ["1", "Einnahme"]], String(s.richtung), "mRichtung");
+    body += '<div class="m-amount"><span class="num">' + betragTxt + '</span><span class="m-s">' + esc(satz) + "</span></div>";
+    body += '<label class="m-field"><span>Wofür</span><input data-act="mf" data-f="text" value="' + esc(s.text) + '" placeholder="z. B. Essen gehen" autocomplete="off"></label>';
+    if (s.art === "ruecklage" || s.art === "geplant") body += monatSel;
+    if ((s.art === "person" && s.dir < 0) || s.art === "schwebend" || (s.art === "geplant" && s.richtung < 0)) body += katSel;
+    body += '<div class="m-keys">' + ["1", "2", "3", "4", "5", "6", "7", "8", "9", ",", "0", "⌫"].map(function (kk) { return '<button data-act="kp" data-k="' + kk + '" aria-label="' + (kk === "⌫" ? "Löschen" : kk) + '">' + kk + "</button>"; }).join("") + "</div>";
+    body += '<div class="m-save-bar"><button class="m-save" data-act="mSave">Eintragen</button></div>';
+    return '<div class="m-sheet-bg" data-act="mClose"></div><div class="m-sheet" role="dialog" aria-label="Neu eintragen"><span class="m-grab"></span>' +
+      '<div class="m-head"><h2>Neu eintragen</h2>' + mIb("mClose", "Schließen", ICON.close) + "</div>" + body + "</div>";
+  }
+  function mSave() {
+    var s = ui.sheet, b = mBetrag(s.betrag), text = (s.text || "").trim();
+    if (!(b > 0)) { toast("Bitte einen Betrag tippen."); return; }
+    if (s.art === "person" && !(s.person || "").trim()) { toast("Bitte eine Person wählen."); return; }
+    if (!text) text = s.art === "ruecklage" ? "Rücklage" : s.art === "geplant" ? "Geplant" : s.art === "schwebend" ? "Einkauf" : "Ohne Notiz";
+    var o = { id: uid("o"), text: text, betrag: Math.round(b * 100) / 100, seit: state.active };
+    if (s.art === "person") { o.art = s.dir > 0 ? "forderung" : "schuld"; o.person = s.person.trim(); o.kat = s.dir > 0 ? null : s.kat; }
+    else if (s.art === "ruecklage") { o.art = "ruecklage"; o.kat = "sparen"; o.monat = s.monat; }
+    else if (s.art === "geplant") { o.art = "geplant"; o.richtung = s.richtung; o.monat = s.monat; o.kat = s.richtung < 0 ? s.kat : null; }
+    else { o.art = "schwebend"; o.kat = s.kat; }
+    mark(ART[o.art].label + " eingetragen"); state.offen.push(o);
+    if (o.person) ui.mPerson = o.person;
+    ui.sheet = null; toast("Eingetragen: " + (o.person ? o.person + " · " : "") + o.text + " " + eur(o.betrag));
+  }
+  function mTabbar() {
+    var cur = ui.view === "zukunft" ? "mehr" : ui.view, n = openList().length;
+    function tab(v, label, icon) { return '<button class="' + (cur === v ? "on" : "") + '" data-act="go" data-view="' + v + '"' + (cur === v ? ' aria-current="page"' : "") + ">" + icon + label + (v === "offen" && n ? '<span class="badge">' + n + "</span>" : "") + "</button>"; }
+    return '<nav class="m-tab" aria-label="Bereiche">' + tab("monat", "Monat", ICON.monat) + tab("offen", "Offen", ICON.offen) +
+      '<button class="m-plus" data-act="mNeu" aria-label="Neu eintragen">' + ICON.plus + "</button>" + tab("ausgaben", "Ausgaben", ICON.ausgaben) + tab("mehr", "Mehr", ICON.mehr) + "</nav>";
+  }
+  // Click-Aktionen der Handy-Ansicht; true = erledigt
+  function mHandle(a, d) {
+    var s = ui.sheet;
+    if (a === "mNeu") { mSheetOpen(ui.view === "offen" ? "person" : "person"); render(); return true; }
+    if (a === "mClose") { ui.sheet = null; render(); return true; }
+    if (a === "mArt") { s.art = d.v; render(); return true; }
+    if (a === "mDir") { s.dir = +d.v; render(); return true; }
+    if (a === "mRichtung") { s.richtung = +d.v; render(); return true; }
+    if (a === "mPick") { s.person = d.p; s.neu = false; render(); return true; }
+    if (a === "mPickNeu") { s.neu = true; s.person = ""; render(); return true; }
+    if (a === "kp") {
+      var bb = s.betrag, kk = d.k;
+      if (kk === "⌫") bb = bb.slice(0, -1);
+      else if (kk === ",") { if (bb.indexOf(",") === -1) bb = (bb || "0") + ","; }
+      else { if (/,\d\d$/.test(bb) || bb.replace(",", "").length >= 8) return true; bb = bb === "0" ? kk : bb + kk; }
+      s.betrag = bb; render(); return true;
+    }
+    if (a === "mSave") { mSave(); return true; }
+    if (a === "mPerson") { ui.mPerson = d.p; ui.view = "offen"; ui.editO = null; render(); return true; }
+    if (a === "mSort") { ui.view = "ausgaben"; ui.repMonth = state.active; ui.sortOpen = true; window.scrollTo(0, 0); render(); return true; }
+    if (a === "mAlleFest") { ui.mAlleFest = !ui.mAlleFest; render(); return true; }
+    return false;
+  }
+
+  /* ================= Abgleich zwischen Geräten ================= */
+  // Verbindung und Stand liegen getrennt von den Daten (eigener Speicherplatz), damit sie nicht mit abgeglichen werden.
+  var SY = window.BoSalSync, SYNC_CFG = "bosal.sync";
+  var syncCfg = (function () { try { return JSON.parse(localStorage.getItem(SYNC_CFG)) || {}; } catch (e) { return {}; } })();
+  var syncRun = { busy: false, err: null, timer: null };
+  var httpOrigin = /^https?:$/.test(location.protocol);
+  function syncSaveCfg() { try { localStorage.setItem(SYNC_CFG, JSON.stringify(syncCfg)); } catch (e) {} }
+  function syncServer() { return syncCfg.server || ""; }
+  function syncReady() { return !!(SY && syncCfg.key && (httpOrigin || syncCfg.server)); }
+  function syncChanged(json) {
+    var h = SY && SY.hash(json);
+    if (!syncReady() || h === syncCfg.hash || h === syncRun.pending) return;   // Neuzeichnen ohne Änderung verschiebt nichts
+    syncRun.pending = h; clearTimeout(syncRun.timer); syncRun.timer = setTimeout(function () { syncRun.pending = null; syncPush(); }, 3000);
+  }
+  function syncPush(force) {
+    if (!syncReady() || syncRun.busy) return;
+    var json = JSON.stringify(state), h = SY.hash(json);
+    if (!force && h === syncCfg.hash) return;
+    syncRun.busy = true;
+    SY.push(syncServer(), syncCfg.key, syncCfg.v || 0, JSON.parse(json)).then(function (r) {
+      syncRun.busy = false;
+      if (r.ok) { syncCfg.v = r.v; syncCfg.at = r.at; syncCfg.hash = h; syncRun.err = null; syncSaveCfg(); if (ui.view === "mehr") render(); return; }
+      if (r.conflict) { ui.modal = { type: "syncKonflikt", remote: r.remote }; render(); }
+    }, function (e) { syncRun.busy = false; syncRun.err = e.message; if (ui.view === "mehr") render(); });
+  }
+  function syncPull(manual) {
+    if (!syncReady() || syncRun.busy) return;
+    syncRun.busy = true;
+    SY.pull(syncServer(), syncCfg.key).then(function (r) {
+      syncRun.busy = false; syncRun.err = null;
+      if (!r) { syncPush(true); if (manual) toast("Abgleich eingerichtet."); return; }
+      if (r.v <= (syncCfg.v || 0)) { if (manual) toast("Alles aktuell."); syncPush(); return; }
+      var lokalGeaendert = syncCfg.v && SY.hash(JSON.stringify(state)) !== syncCfg.hash;
+      if (lokalGeaendert) { ui.modal = { type: "syncKonflikt", remote: r }; render(); return; }
+      syncApply(r); if (manual) toast("Neuer Stand vom anderen Gerät übernommen.");
+    }, function (e) { syncRun.busy = false; syncRun.err = e.message; if (manual) toast("Abgleich fehlgeschlagen: " + e.message); else if (ui.view === "mehr") render(); });
+  }
+  function syncApply(r) {
+    var o = r.data; o.modus = "echt"; o.angelegt = true; o.kk = o.kk || []; o.importLog = o.importLog || [];
+    Object.keys(state).forEach(function (k) { delete state[k]; }); Object.keys(o).forEach(function (k) { state[k] = o[k]; });
+    syncCfg.v = r.v; syncCfg.at = r.at; syncCfg.hash = SY.hash(JSON.stringify(state)); syncSaveCfg();
+    hist.past = []; hist.future = []; render();
+  }
+  function syncCard() {
+    var srv = httpOrigin ? "" : '<label class="m-field sync-srv"><span>Server</span><input data-act="syncServer" value="' + esc(syncCfg.server || "") + '" placeholder="https://bosal.pages.dev" autocomplete="off" spellcheck="false"></label>';
+    var head = '<div class="card-head"><h2>Abgleich zwischen Geräten</h2>' + (syncCfg.key ? '<span class="pill">' + (syncRun.err ? "Problem" : "an") + "</span>" : '<span class="pill warn">aus</span>') + "</div>";
+    if (!syncCfg.key) return '<div class="card">' + head + '<p class="muted small">Deine Daten werden auf dem Gerät mit deinem Schlüssel verschlüsselt. Der Server sieht nur Datensalat. Auf allen Geräten derselbe Stand.</p>' + srv +
+      '<div class="btn-row">' + btn("Neu einrichten", "syncNew", "", "btn-primary") + btn("Mit Schlüssel verbinden", "syncConnectAsk", "", "") + "</div></div>";
+    return '<div class="card">' + head + (syncRun.err ? '<p class="note">' + esc(syncRun.err) + "</p>" : '<p class="muted small">Zuletzt abgeglichen: ' + (syncCfg.at ? mWann(syncCfg.at) : "noch nie") + " · Stand " + (syncCfg.v || 0) + ". Änderungen gehen nach ein paar Sekunden automatisch raus.</p>") + srv +
+      (ui.syncShowKey ? '<div class="sync-key num">' + esc(SY.pretty(syncCfg.key)) + '</div><p class="muted small">Diesen Schlüssel brauchst du auf deinen anderen Geräten: Mehr → Abgleich → Mit Schlüssel verbinden. Heb ihn gut auf, z. B. in deinen Passwörtern. Ohne ihn kommt niemand an deine Daten, auch du nicht.</p>' : "") +
+      '<div class="btn-row">' + btn("Jetzt abgleichen", "syncNow", "", "btn-primary") + btn(ui.syncShowKey ? "Schlüssel ausblenden" : "Schlüssel zeigen", "syncShowKey", "", "") + (ui.syncShowKey ? btn("Kopieren", "syncCopy", "", "") : "") + '<span class="grow"></span>' + btn("Trennen", "syncOff", "", "btn-ghost") + "</div></div>";
+  }
+  // Click-Aktionen des Abgleichs; true = erledigt
+  function syncHandle(a) {
+    if (a === "syncNew") {
+      if (!httpOrigin && !syncCfg.server) { toast("Bitte zuerst die Server-Adresse eintragen."); return true; }
+      syncCfg = { key: SY.newKey(), server: syncCfg.server, v: 0 }; syncSaveCfg(); ui.syncShowKey = true; state.angelegt = true;
+      syncPush(true); render(); toast("Abgleich eingerichtet. Schreib dir den Schlüssel auf."); return true;
+    }
+    if (a === "syncConnectAsk") { ui.modal = { type: "syncConnect" }; render(); return true; }
+    if (a === "syncConnect") {
+      var key = document.getElementById("sy-key").value, srvIn = document.getElementById("sy-srv");
+      if (srvIn) syncCfg.server = srvIn.value.trim().replace(/\/+$/, "");
+      if (!SY.valid(key)) { toast("Der Schlüssel hat 20 Zeichen, z. B. ABCD-EFGH-JKLM-NPQR-STUV."); return true; }
+      if (!httpOrigin && !syncCfg.server) { toast("Bitte die Server-Adresse eintragen."); return true; }
+      toast("Verbinde …");
+      SY.pull(syncServer(), key).then(function (r) {
+        if (!r) { toast("Unter diesem Schlüssel ist noch nichts gespeichert."); return; }
+        var hatDaten = state.angelegt !== false && (state.transactions.length || state.offen.length || state.expected.length);
+        if (hatDaten && !window.confirm("Die Daten auf diesem Gerät werden durch den Stand aus dem Abgleich ersetzt. Weiter?")) return;
+        syncCfg = { key: SY.pretty(key), server: syncCfg.server, v: 0 }; ui.modal = null; syncApply(r); toast("Verbunden. Deine Daten sind da.");
+      }, function (e) { toast("Verbinden fehlgeschlagen: " + e.message); });
+      return true;
+    }
+    if (a === "syncNow") { syncPull(true); return true; }
+    if (a === "syncShowKey") { ui.syncShowKey = !ui.syncShowKey; render(); return true; }
+    if (a === "syncCopy") { (navigator.clipboard ? navigator.clipboard.writeText(SY.pretty(syncCfg.key)) : Promise.reject()).then(function () { toast("Schlüssel kopiert."); }, function () { toast("Kopieren ging nicht. Bitte abschreiben."); }); return true; }
+    if (a === "syncOff") { if (!window.confirm("Abgleich auf diesem Gerät beenden? Die Daten hier bleiben, werden aber nicht mehr abgeglichen.")) return true; syncCfg = { server: syncCfg.server }; syncSaveCfg(); ui.syncShowKey = false; render(); return true; }
+    if (a === "syncTakeRemote") { var rm = ui.modal.remote; ui.modal = null; syncApply(rm); toast("Stand vom anderen Gerät übernommen."); return true; }
+    if (a === "syncKeepMine") { syncCfg.v = ui.modal.remote.v; syncSaveCfg(); ui.modal = null; syncPush(true); render(); toast("Deine Version wird gespeichert."); return true; }
+    return false;
+  }
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") syncPull(); else syncPush(); });
+  setInterval(function () { if (document.visibilityState === "visible") syncPull(); }, 120000);
+
   /* ================= Rahmen ================= */
   var VIEWS = [["monat", "Monat"], ["offen", "Offen"], ["ausgaben", "Ausgaben"], ["zukunft", "Zukunft"], ["mehr", "Mehr"]];
   var RENDER = { monat: viewMonat, offen: viewOffen, ausgaben: viewAusgaben, zukunft: viewZukunft, mehr: viewMehr };
@@ -934,12 +1236,18 @@
     var nav = VIEWS.map(function (v) {
       return '<button class="nav-i' + (ui.view === v[0] ? " on" : "") + '" data-act="go" data-view="' + v[0] + '"><span class="nav-l">' + v[1] + "</span>" + (v[0] === "offen" && nOpen ? '<span class="badge">' + nOpen + "</span>" : "") + "</button>";
     }).join("");
-    var y = window.scrollY;
+    var y = window.scrollY, phone = isPhone();
     applyTheme();
+    document.documentElement.classList.toggle("is-phone", phone);
+    if (phone) {
+      var main = ui.view === "monat" ? mMonat() : ui.view === "offen" ? mOffen() : RENDER[ui.view]();
+      document.getElementById("app").innerHTML = '<main class="main">' + main + "</main>" + mTabbar() + mSheet() + modal() + (ui.toast ? '<div class="toast" role="status">' + esc(ui.toast) + "</div>" : "");
+      window.scrollTo(0, y); save(); return;
+    }
     document.getElementById("app").innerHTML =
       '<header class="top"><div class="brand"><span class="brand-mark" aria-hidden="true"></span>BoSal</div><div class="top-r"><button class="ur" data-act="undo"' + (hist.past.length ? ' title="Rückgängig: ' + esc(hist.past[hist.past.length - 1].label) + '"' : " disabled") + ' aria-label="Rückgängig">↶</button>' +
       '<button class="ur" data-act="redo"' + (hist.future.length ? ' title="Wiederholen: ' + esc(hist.future[hist.future.length - 1].label) + '"' : " disabled") + ' aria-label="Wiederholen">↷</button>' +
-      '<button class="ur" data-act="palOpen" aria-label="Farbpalette">🎨</button>' + (state.modus === "echt" ? '<span class="top-date">Testversion · deine Daten</span>' : '<button class="mode-b" data-act="welcome">Beispieldaten · eigene Daten nutzen</button>') + '' + (ui.palOpen ? palettePicker() : "") + "</div></header>" +
+      '<button class="ur" data-act="palOpen" aria-label="Farbpalette">🎨</button>' + (state.modus === "echt" ? (state.angelegt === false ? '<button class="mode-b" data-act="welcome">Einrichten</button>' : "") : '<button class="mode-b" data-act="welcome">Beispieldaten · eigene Daten nutzen</button>') + '' + (ui.palOpen ? palettePicker() : "") + "</div></header>" +
       '<nav class="nav" aria-label="Bereiche">' + nav + '</nav><main class="main">' + RENDER[ui.view]() + "</main>" + modal() +
       (ui.toast ? '<div class="toast" role="status">' + esc(ui.toast) + "</div>" : "");
     window.scrollTo(0, y);
@@ -952,6 +1260,7 @@
     var b = e.target.closest("[data-act]");
     if (ui.palOpen && !e.target.closest(".pal-pop") && (!b || b.dataset.act !== "palOpen")) { ui.palOpen = false; if (!b) { render(); return; } }
     if (!b || b.tagName === "INPUT" || b.tagName === "SELECT") return;
+    if (mHandle(b.dataset.act, b.dataset) || syncHandle(b.dataset.act)) return;
     if (b.classList.contains("overlay") && e.target !== b) return;   // Klick im Dialog schließt ihn nicht
     var a = b.dataset.act, d = b.dataset;
     if (a === "go") { ui.view = d.view; ui.month = null; ui.sortOpen = false; window.scrollTo(0, 0); render(); return; }
@@ -995,7 +1304,7 @@
     if (a === "kassensturz") { ui.modal = { type: "kassensturz", step: state.modus === "demo" && state.demoImported ? 2 : 1 }; render(); return; }
     if (a === "pickCsv") { if (state.modus !== "echt") { ui.modal = { type: "welcome" }; render(); return; } csvIn.click(); return; }
     if (a === "skipImport") { ui.modal.step = 2; ui.modal.importMsg = "Ohne neuen Import. Bereits abgebuchte Fixkosten, die noch nicht importiert sind, zählen doppelt."; render(); return; }
-    if (a === "startEcht") { state = makeState("echt"); hist.past = []; hist.future = []; ui.view = "monat"; ui.modal = { type: "kassensturz", step: 1 }; render(); return; }
+    if (a === "startEcht") { state = makeState("echt"); state.angelegt = true; hist.past = []; hist.future = []; ui.view = "monat"; ui.modal = { type: "kassensturz", step: 1 }; render(); return; }
     if (a === "welcome") { ui.modal = { type: "welcome" }; render(); return; }
     if (a === "exportBackup") { exportBackup(); toast("Backup wird gespeichert (Ordner Downloads)."); return; }
     if (a === "loadBackup") { backupIn.click(); return; }
@@ -1099,6 +1408,7 @@
     if (a === "todo") { toast("Kommt im echten Umbau."); return; }
   });
   document.addEventListener("input", function (e) {
+    if (e.target.dataset && e.target.dataset.act === "mf" && ui.sheet && e.target.tagName === "INPUT") { ui.sheet[e.target.dataset.f] = e.target.value; return; }   // ohne Neuzeichnen, sonst springt die Tastatur
     if (e.target.dataset.act === "zYear" && window.BoSalZukunft.change(zctx(), e.target)) render();
   });
   document.addEventListener("change", function (e) {
@@ -1122,6 +1432,8 @@
       else it[f] = el.value.trim();
       enrichEverything(); renderAfterChange(el); return;
     }
+    if (el.dataset.act === "syncServer") { syncCfg.server = el.value.trim().replace(/\/+$/, ""); syncSaveCfg(); render(); return; }
+    if (el.dataset.act === "mf" && ui.sheet) { ui.sheet[el.dataset.f] = el.value; renderAfterChange(el); return; }
     if (el.dataset.act === "vgSaldo") { mark("Vorgemerkte Umsätze"); state.vgImSaldo = el.checked; render(); return; }
     if (el.dataset.act === "eArt") { ui.editArt = el.value; ui.editDraft = { person: document.getElementById("e-person").value, text: document.getElementById("e-text").value, betrag: document.getElementById("e-betrag").value }; render(); return; }
     if (el.dataset.act === "inclFix") { ui.inclFix = el.checked; render(); return; }
@@ -1156,4 +1468,5 @@
     e.preventDefault(); if (e.shiftKey) redo(); else undo();
   });
   render();
+  setTimeout(function () { syncPull(); }, 400);
 })();

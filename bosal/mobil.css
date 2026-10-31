@@ -1,0 +1,127 @@
+/* ============ iPhone-Ansicht (Design D) — gilt nur, wenn html.is-phone gesetzt ist ============ */
+html.is-phone { --on-accent: #FFFFFF; --m-pad: 20px; }
+html.is-phone[data-mode="dark"] { --on-accent: #111216; }
+html.is-phone body { background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+html.is-phone .app { display: block; max-width: none; min-height: 100vh; }
+html.is-phone .main { padding: calc(env(safe-area-inset-top, 0px) + 14px) var(--m-pad) calc(112px + env(safe-area-inset-bottom, 0px)); }
+html.is-phone .num { font-variant-numeric: tabular-nums; }
+html.is-phone .pos { color: var(--pos); }
+html.is-phone .neg { color: var(--neg); }
+
+/* Kopf: Titel links, ein runder Knopf rechts, eine Zeile Status darunter */
+.m-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
+.m-head h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
+.m-head h2 { margin: 0; font-size: 20px; font-weight: 800; }
+.m-cap { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.m-ib { width: 44px; height: 44px; flex: none; border-radius: 22px; border: 0; background: var(--surface); color: var(--ink); display: grid; place-items: center; padding: 0; cursor: pointer; }
+
+/* Karten und die große Zahl */
+.m-card { background: var(--surface); border-radius: 20px; }
+.m-hero { margin-top: 16px; padding: 20px; display: flex; flex-direction: column; }
+.m-lab { font-size: 15px; color: var(--muted); }
+.m-big { margin-top: 6px; font-size: 48px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+.m-sub { margin-top: 8px; font-size: 15px; color: var(--muted); }
+.m-stats { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.m-stats div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.m-stats span { font-size: 13px; color: var(--muted); }
+.m-stats b { font-size: 17px; }
+
+/* Abschnitte und Listen: Text beginnt immer auf derselben Linie, Beträge rechtsbündig */
+.m-h2 { margin: 24px 0 8px; font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.m-h2-r { text-transform: none; letter-spacing: 0; font-weight: 500; }
+.m-list { list-style: none; margin: 0; padding: 0; background: var(--surface); border-radius: 20px; overflow: hidden; }
+.m-list > li { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 16px; border-bottom: 0; }
+.m-list > li + li { border-top: 1px solid var(--line); }
+.m-list > li.m-tickrow { padding-left: 4px; gap: 8px; }
+.m-list > li.done .m-t, .m-list > li.done .m-amt { color: var(--muted); }
+.m-list > li.m-tickrow.done .m-t { text-decoration: line-through; }
+.m-chip { width: 36px; height: 36px; flex: none; border-radius: 18px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-size: 15px; font-weight: 800; }
+.m-chip.pos { background: var(--pos-soft, color-mix(in srgb, var(--pos) 16%, transparent)); color: var(--pos); }
+.m-chip.warn { background: var(--warn-soft); color: var(--warn-ink, var(--warn)); }
+.m-chip.neutral { background: var(--surface2); color: var(--muted); }
+.m-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 9px 0; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+div.m-main { cursor: default; }
+.m-t { font-size: 16px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-s { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-amt { font-size: 16px; font-weight: 600; white-space: nowrap; }
+.m-act { flex: none; font: inherit; font-size: 15px; font-weight: 600; color: var(--accent); background: none; border: 0; padding: 12px 0 12px 8px; cursor: pointer; }
+.m-tick { width: 44px; height: 44px; flex: none; border: 0; background: transparent; display: grid; place-items: center; padding: 0; cursor: pointer; }
+.m-tick i { width: 22px; height: 22px; border-radius: 11px; border: 2px solid color-mix(in srgb, var(--muted) 70%, transparent); box-sizing: border-box; display: grid; place-items: center; color: var(--on-accent); font-style: normal; font-size: 12px; font-weight: 800; }
+.m-tick.on i { background: var(--pos); border-color: var(--pos); color: #fff; }
+.m-tick-r { margin-right: -12px; }
+.m-more { display: block; width: 100%; margin-top: 8px; padding: 12px 0; background: none; border: 0; font: inherit; font-size: 15px; font-weight: 600; color: var(--accent); text-align: center; cursor: pointer; }
+.m-gap { height: 24px; }
+
+/* So rechnet BoSal (zum Aufklappen) */
+.m-calc { padding: 0 16px; }
+.m-calc > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; min-height: 56px; font-size: 16px; font-weight: 600; cursor: pointer; }
+.m-calc > summary::-webkit-details-marker { display: none; }
+.m-calc > summary svg { color: var(--muted); transition: transform .15s; }
+.m-calc[open] > summary svg { transform: rotate(90deg); }
+.m-plain { list-style: none; margin: 0; padding: 0 0 8px; border-top: 1px solid var(--line); }
+.m-plain li { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 40px; font-size: 15px; }
+.m-plain li.m-sum { border-top: 1px solid var(--line-strong); font-weight: 800; }
+.m-t2 { color: var(--muted); }
+.m-sum .m-t2 { color: var(--ink); }
+.m-konten { padding: 8px 0 12px; border-top: 1px solid var(--line); }
+.m-chk { padding-bottom: 14px; font-size: 14px; }
+
+/* Nächste Monate und Monatswechsel */
+.m-next { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.m-nm { display: flex; flex-direction: column; gap: 2px; padding: 12px; border: 0; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.m-nm b { font-size: 17px; }
+.m-monthbtns { display: flex; justify-content: space-between; gap: 12px; margin-top: 16px; }
+.m-link { background: none; border: 0; padding: 12px 0; font: inherit; font-size: 15px; font-weight: 600; color: var(--accent); cursor: pointer; }
+.m-monthbtns .m-link:only-child { margin-left: auto; }
+
+/* Offen: Personen als Kacheln */
+.m-tiles { margin-top: 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.m-tile { background: var(--surface); border: 1.5px solid var(--surface); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; color: var(--ink); font: inherit; text-align: left; cursor: pointer; min-width: 0; }
+.m-tile.on { border-color: var(--accent); }
+.m-tile-h { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; min-width: 0; max-width: 100%; }
+.m-tile-h b { font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-av { width: 36px; height: 36px; flex: none; border-radius: 18px; background: var(--surface2); color: var(--ink); display: grid; place-items: center; font-weight: 800; }
+.m-tile.on .m-av { background: var(--accent); color: var(--on-accent); }
+.m-tile-v { font-size: 22px; font-weight: 800; }
+html.is-phone .olist li.o-edit { margin: 0; border-radius: 0; background: var(--surface2); }
+
+/* Tab-Leiste unten */
+.m-tab { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding: 6px 8px calc(env(safe-area-inset-bottom, 0px) + 8px); background: color-mix(in srgb, var(--surface) 94%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid var(--line); }
+.m-tab > button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 48px; justify-content: center; font: inherit; font-size: 11px; font-weight: 500; color: var(--muted); background: none; border: 0; padding: 0; cursor: pointer; }
+.m-tab > button.on { color: var(--accent); font-weight: 600; }
+.m-tab > .m-plus { justify-self: center; width: 56px; height: 56px; min-height: 0; border-radius: 28px; background: var(--accent); color: var(--on-accent); margin-top: -20px; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+.m-tab .badge { position: absolute; top: 0; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--neg); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; }
+
+/* Neu eintragen: Blatt von unten */
+.m-sheet-bg { position: fixed; inset: 0; z-index: 90; background: rgba(0, 0, 0, .5); }
+.m-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 91; max-height: calc(100% - env(safe-area-inset-top, 0px) - 24px); overflow-y: auto; box-sizing: border-box; background: var(--surface); border-radius: 28px 28px 0 0; padding: 8px var(--m-pad) calc(env(safe-area-inset-bottom, 0px) + 16px); display: flex; flex-direction: column; gap: 10px; }
+.m-grab { align-self: center; width: 40px; height: 5px; border-radius: 3px; background: var(--line-strong); flex: none; }
+.m-sheet .m-ib { background: var(--surface2); }
+.m-seg { display: grid; background: var(--surface2); border-radius: 12px; padding: 3px; gap: 0; }
+.m-seg button { height: 38px; min-width: 0; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 500; padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.m-seg button.on { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+html.is-phone[data-mode="dark"] .m-seg button.on { background: var(--line-strong); }
+.m-chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.m-chips button { height: 44px; min-width: 0; border-radius: 12px; border: 1.5px solid var(--line-strong); background: transparent; color: var(--ink); font: inherit; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.m-chips button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.m-amount { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 0; text-align: center; }
+.m-amount .num { font-size: 40px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; }
+.m-amount .m-s { white-space: normal; font-size: 15px; }
+.m-field { display: flex; align-items: center; gap: 12px; height: 48px; border-radius: 12px; background: var(--surface2); padding: 0 14px; font-size: 15px; color: var(--muted); }
+.m-field input, .m-field select { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; font: inherit; font-size: 16px; font-weight: 500; color: var(--ink); text-align: right; -webkit-appearance: none; appearance: none; }
+.m-field select { text-align-last: right; }
+.m-keys { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.m-keys button { height: 46px; border: 0; border-radius: 12px; background: var(--surface2); color: var(--ink); font: inherit; font-size: 22px; font-weight: 600; cursor: pointer; }
+.m-keys button:active { background: var(--line-strong); }
+.m-save-bar { position: sticky; bottom: calc(-16px - env(safe-area-inset-bottom, 0px)); margin: 0 calc(-1 * var(--m-pad)) calc(-16px - env(safe-area-inset-bottom, 0px)); padding: 8px var(--m-pad) calc(env(safe-area-inset-bottom, 0px) + 16px); background: var(--surface); display: flex; flex-direction: column; }
+.m-save { height: 54px; flex: none; border: 0; border-radius: 14px; background: var(--accent); color: var(--on-accent); font: inherit; font-size: 17px; font-weight: 800; cursor: pointer; }
+
+/* Bestehende Seiten am Handy: Dialoge als Blatt, Toast über der Tab-Leiste */
+html.is-phone .overlay { align-items: end; padding: 0; }
+html.is-phone .modal { width: 100%; max-height: calc(100vh - env(safe-area-inset-top, 0px) - 24px); border-radius: 28px 28px 0 0; padding: 20px var(--m-pad) calc(env(safe-area-inset-bottom, 0px) + 20px); box-sizing: border-box; }
+html.is-phone .toast { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+html.is-phone .page-t { font-size: 28px; margin: 0 0 16px; }
+html.is-phone .m-foot-wrap { flex-wrap: wrap; }
+.m-foot-wrap { display: flex; gap: 8px; justify-content: flex-end; }
+.m-field input:focus, .m-field select:focus { outline: none; }
+.m-field:focus-within { box-shadow: 0 0 0 2px var(--accent); }

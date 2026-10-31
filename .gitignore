@@ -27,4 +27,5 @@ tools/gh
 .claude/settings.local.json
 
 # Gebaute BoSal-Entwürfe enthalten seed.js-Daten
-entwurf/*.html
+bosal/*.html
+web/
