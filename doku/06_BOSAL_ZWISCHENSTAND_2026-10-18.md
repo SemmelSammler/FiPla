@@ -228,7 +228,7 @@ Annahmen → Diagramme (Vermögen, FI-Test; Überarbeitung folgt) → „So wird
 
 ## Design-Varianten zum Ausprobieren (Testversion 22)
 
-Umschalter oben rechts in Monat und Offen (gespeichert in `localStorage` `bosal.lay.monat/offen`):
+Umschalter oben rechts in Monat und Offen. **Entscheidung (Testversion 23): Monat = „Klassisch“, Offen = „Personen“**, Umschalter ausgeblendet (`ui.showLayouts`):
 - **Monat:** Klassisch (bisher) · Übersicht (großes „Übrig“ mit „pro Tag“, 4 Kacheln, Fahrplan der festen
   Posten nach Tag, Kontostände, Offen kompakt, kommende Monate als Balken, Rechnung zum Aufklappen) ·
   Rechnung (Übrig + Kontostände, Treppe Konten → Vorgemerkt → Kommt rein → Geht ab → Offen → Übrig,

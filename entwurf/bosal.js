@@ -96,7 +96,7 @@
   var PALETTES = [["violett", "Violett", "#6A5AE0", "#EB4F78"], ["ozean", "Ozean", "#1E6FD9", "#18B6A6"], ["wald", "Wald", "#2F7D4F", "#A3B83A"], ["koralle", "Koralle", "#E2574C", "#F2A93B"], ["sand", "Sand", "#9A7652", "#D9A86C"],
     ["beere", "Beere", "#B0306A", "#7A3FD1"], ["mint", "Mint", "#13A58A", "#7DD3A8"], ["petrol", "Petrol", "#0E6E80", "#3AA0C8"], ["gold", "Gold", "#B8860B", "#E8A33A"], ["graphit", "Graphit", "#3F4656", "#8A93A6"]];
   var MODES = [["hell", "Hell"], ["dunkel", "Dunkel"], ["system", "Wie System"]];
-  var ui = { modal: firstRun ? { type: "welcome" } : null, palette: "violett", mode: "hell", custom: null, view: "monat", repMonth: null, shareMode: true, sortOpen: false, skipped: {}, toast: null, addArt: "forderung", showDone: false };
+  var ui = { lay_monat: "a", lay_offen: "b", modal: firstRun ? { type: "welcome" } : null, palette: "violett", mode: "hell", custom: null, view: "monat", repMonth: null, shareMode: true, sortOpen: false, skipped: {}, toast: null, addArt: "forderung", showDone: false };
 
   /* ---------- Hilfen ---------- */
   var fmt = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -582,6 +582,7 @@
   }
   // Ansicht wählen (nur zum Ausprobieren der Varianten)
   function laySwitch(tab, opts) {
+    if (!ui.showLayouts) return "";   // Ansichten sind entschieden (Monat: Klassisch, Offen: Personen)
     var cur = ui["lay_" + tab] || "a";
     return '<div class="seg seg-sm lay-sw" role="group" aria-label="Ansicht">' + opts.map(function (o) { return '<button class="seg-b' + (cur === o[0] ? " on" : "") + '" data-act="layout" data-tab="' + tab + '" data-v="' + o[0] + '">' + o[1] + "</button>"; }).join("") + "</div>";
   }
@@ -873,7 +874,7 @@
   try {
     var sp = localStorage.getItem("bosal.palette"); if (sp && (sp === "eigene" || PALETTES.some(function (p) { return p[0] === sp; }))) ui.palette = sp;
     var sm = localStorage.getItem("bosal.mode"); if (sm) ui.mode = sm;
-    ui.lay_monat = localStorage.getItem("bosal.lay.monat") || "a"; ui.lay_offen = localStorage.getItem("bosal.lay.offen") || "a";
+
     ui.custom = localStorage.getItem("bosal.custom") || "#E0457B";
   } catch (e) { ui.custom = "#E0457B"; }
   function applyTheme() {
