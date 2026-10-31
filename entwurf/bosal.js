@@ -440,7 +440,7 @@
 
     var head = '<div class="mhead"><div><h1 class="page-t">' + mLabel(mk, true) + '</h1><div class="muted">Budgetmonat' +
       (state.startedEarly ? " · früh gestartet am " + state.startedEarly : " · läuft") + "</div></div>" +
-      '<div class="mh-act">' + (state.prevCtx ? btn("← Zurück zu " + mName(state.prevCtx.mk), "reopenAsk", "", "btn-ghost") : "") + btn(mName(nx) + " starten →", "startNext", "", "") + "</div></div>";
+      '<div class="mh-act">' + laySwitch("monat", [["a", "Klassisch"], ["b", "Übersicht"], ["c", "Rechnung"]]) + (state.prevCtx ? btn("← Zurück zu " + mName(state.prevCtx.mk), "reopenAsk", "", "btn-ghost") : "") + btn(mName(nx) + " starten →", "startNext", "", "") + "</div></div>";
 
     var banner = sync.ok ? "" :
       '<div class="fresh"><span class="fresh-dot"></span><div><b>' + esc(sync.title) + "</b> " + esc(sync.text) + "</div>" +
@@ -517,7 +517,73 @@
       return '<li><button class="linkrow" data-act="openMonth" data-month="' + m + '"><b>' + mLabel(m, true) + "</b>" + (extra.length ? ' <em class="muted">' + extra.join(" · ") + "</em>" : "") + "</button>" + money(v.total) + "</li>";
     }).join("") + '</ul><p class="muted small">Grobe Vorschau: Plan-Einnahmen minus feste Posten, plus was du für den Monat geplant oder verschoben hast. Antippen zum Planen. Der echte Wert entsteht erst mit dem Kassensturz.</p></div>';
 
+    /* ---------- Ansicht B „Übersicht“: Kacheln, Fahrplan der festen Posten, Rechnung zum Aufklappen ---------- */
+    var offenSum = p.forderung + p.schuld + p.schwebend + p.ruecklage + p.geplant;
+    var tage = (function () { if (mk < CUR) return 0; var y = +mk.slice(0, 4), m = +mk.slice(5, 7), last = new Date(y, m, 0).getDate(); return mk === CUR ? last - now.getDate() + 1 : last; })();
+    var proTag = R.hasKonten && tage ? R.total / tage : null;
+    var heroB = '<div class="card hero mb-hero"><div class="hero-label">Übrig bis Ende ' + mName(mk) + '</div><div class="hero-num num">' + (R.hasKonten ? eur(R.total) : "?") + "</div>" +
+      '<div class="hero-sub">' + (proTag != null ? "≈ <b>" + eur(proTag) + "</b> pro Tag · noch " + tage + " Tage" : R.hasKonten ? "" : "Trag deine Kontostände ein, dann rechnet BoSal.") + "</div></div>";
+    function tile(label, v, sub, act) { return '<button class="card mb-tile"' + (act ? ' data-act="' + act + '"' : " disabled") + '><span class="mb-tl">' + label + "</span>" + money(v) + '<span class="mb-ts muted small">' + sub + "</span></button>"; }
+    var tilesB = '<div class="mb-tiles">' + heroB +
+      tile("Auf den Konten", p.konten + p.vorgemerkt, R.hasKonten ? (p.vorgemerkt ? "nach " + eur(p.vorgemerkt) + " vorgemerkt" : "Giro, 2. Konto, Karte") : "noch nicht eingetragen", "kassensturz") +
+      tile("Kommt noch rein", p.ein, R.einOffen.length + " feste Einnahmen") +
+      tile("Geht noch ab", p.fix + p.carry, R.fixOffen.length + R.carry.length + " feste Posten") +
+      tile("Offene Posten", offenSum + p.uebertrag, openList().length + " Einträge", "goOffen") + "</div>";
+    // Fahrplan: wann welcher feste Posten kommt (Tag aus der letzten erkannten Buchung)
+    function hitsOf(it) { return (it.kk ? state.kk : state.transactions).filter(function (t) { return t.itemId === it.id; }).sort(function (a2, b2) { return a2.datum < b2.datum ? 1 : -1; }); }
+    var plan = fest.map(function (r) {
+      var h = hitsOf(r.item), inMonth = h.find(function (t) { return t.effMonat === mk; }), day = inMonth ? +inMonth.datum.slice(8, 10) : h[0] ? +h[0].datum.slice(8, 10) : 32;
+      return { r: r, done: Math.abs(rest(r)) < 0.005, day: day, datum: inMonth ? inMonth.datum : null, vm: inMonth && isVg(inMonth) };
+    }).sort(function (a2, b2) { return (a2.done - b2.done) || (a2.day - b2.day); });
+    var fahrplan = '<div class="card"><div class="card-head"><h2>Fahrplan ' + mName(mk) + '</h2><span class="muted small">' + plan.filter(function (x) { return x.done; }).length + " von " + plan.length + " erledigt</span></div>" +
+      '<ul class="mb-plan">' + plan.map(function (x) {
+        var r = x.r, it = r.item;
+        return '<li class="' + (x.done ? "done" : "") + '"><span class="mb-day">' + (x.datum ? dLabel(x.datum) : x.day < 32 ? "ca. " + x.day + "." : "–") + '</span><span class="mb-pn">' + esc(it.beschreibung) + (x.vm ? ' <em class="muted">vorgemerkt</em>' : "") + (r.hand != null ? ' <em class="muted">von Hand</em>' : "") + "</span>" + money(r.soll) +
+          '<button class="ck" data-act="haken" data-id="' + it.id + '" aria-pressed="' + x.done + '" title="abhaken">' + (x.done ? "✓" : "") + "</button></li>";
+      }).join("") + "</ul>" + (nichtF.length ? '<p class="muted small">Nicht fällig: ' + esc(nichtF.map(function (r) { return r.item.beschreibung; }).join(", ")) + "</p>" : "") + "</div>";
+    var kontenCard = '<div class="card"><h2>Kontostände</h2>' + kontenDetail + "</div>";
+    var arts = Object.keys(ART).map(function (a2) { var g = R.groups[a2]; return g.length ? "<li><span>" + ART[a2].ico + " " + ART[a2].label + ' <em class="muted">' + g.length + "</em></span>" + money(p[a2]) + "</li>" : ""; }).join("");
+    var offenCard = '<div class="card"><div class="card-head"><h2>Offene Posten</h2>' + btn("Öffnen →", "go", ' data-view="offen"', "btn-sm") + "</div>" + (arts ? '<ul class="mini-list">' + arts + "</ul>" : '<p class="muted">Nichts offen.</p>') + "</div>";
+    var maxV = Math.max.apply(null, next.map(function (m) { return Math.abs(vorschau(m).total); }).concat([1]));
+    var kommendB = '<div class="card"><h2>Kommende Monate</h2><ul class="mb-bars">' + next.map(function (m) {
+      var v = vorschau(m);
+      return '<li><button class="linkrow" data-act="openMonth" data-month="' + m + '"><span>' + mLabel(m) + '</span><span class="mb-bar"><i class="' + (v.total < 0 ? "neg" : "") + '" style="width:' + (Math.abs(v.total) / maxV * 100).toFixed(1) + '%"></i></span>' + money(v.total) + "</button></li>";
+    }).join("") + "</ul></div>";
+    var rechnungB = '<details class="card mb-calc" data-key="mbcalc"' + (ui.open_mbcalc ? " open" : "") + '><summary><h2>So rechnet BoSal</h2><span class="muted small">aufklappen</span></summary>' + wf.replace('<div class="card wf"><h2>So setzt sich das zusammen</h2>', '<div class="wf">') + "</details>";
+    if (ui.lay_monat === "b") return head + banner + tilesB + '<div class="grid-m mb-grid"><div class="col">' + fahrplan + rechnungB + '</div><div class="col">' + vsCard + kontenCard + offenCard + kommendB + "</div></div>";
+
+    /* ---------- Ansicht C „Rechnung“: die Gleichung als Treppe, darunter die drei Listen ---------- */
+    var steps = [["Konten", p.konten, "start"], ["Vorgemerkt", p.vorgemerkt], ["Kommt rein", p.ein], ["Geht ab", p.fix], ["Aus " + mName(L.prevMonth(mk)), p.carry], ["Offene Posten", offenSum], ["Verschoben", p.uebertrag], ["Übrig", R.total, "end"]]
+      .filter(function (st) { return st[2] || Math.abs(st[1]) > 0.005; });
+    var run = 0, cols = steps.map(function (st) { var a0 = st[2] === "end" ? 0 : st[2] === "start" ? 0 : run, b0 = st[2] === "end" ? st[1] : a0 + st[1]; if (st[2] !== "end") run = b0; return { l: st[0], v: st[1], a: a0, b: b0, k: st[2] }; });
+    var hi = Math.max.apply(null, cols.map(function (c2) { return Math.max(c2.a, c2.b); }).concat([0])), lo = Math.min.apply(null, cols.map(function (c2) { return Math.min(c2.a, c2.b); }).concat([0])), span = hi - lo || 1;
+    var treppe = R.hasKonten ? '<div class="mc-chart">' + cols.map(function (c2) {
+      var top = (hi - Math.max(c2.a, c2.b)) / span * 100, h = Math.max(1.5, Math.abs(c2.b - c2.a) / span * 100);
+      return '<div class="mc-col"><div class="mc-area"><span class="mc-bar ' + (c2.k ? "tot" : c2.v < 0 ? "neg" : "pos") + '" style="top:' + top.toFixed(1) + "%;height:" + h.toFixed(1) + '%"></span><span class="mc-zero" style="top:' + ((hi - 0) / span * 100).toFixed(1) + '%"></span></div>' +
+        '<b class="num">' + (c2.k ? "" : c2.v > 0 ? "+" : "−") + eur(Math.abs(c2.v)).replace(" €", "") + '</b><span class="muted small">' + esc(c2.l) + "</span></div>";
+    }).join("") + "</div>" : '<p class="muted">Trag deine Kontostände ein, dann zeichnet BoSal die Rechnung.</p>';
+    var gleichung = '<div class="card mc-head"><div class="mc-top"><div><div class="hero-label">Übrig bis Ende ' + mName(mk) + '</div><div class="mc-num num ' + (R.total < 0 ? "neg" : "") + '">' + (R.hasKonten ? eur(R.total) : "?") + "</div>" +
+      (proTag != null ? '<div class="muted small">≈ ' + eur(proTag) + " pro Tag · noch " + tage + " Tage</div>" : "") + '</div><div class="konten mc-konten">' +
+      kontoField("giro", "Girokonto", state.konten.giro) + kontoField("konto2", "2. Konto", state.konten.konto2) + kontoField("kk", "Kreditkarte", state.konten.kk) + "</div></div>" + treppe + "</div>";
+    function listCard(title, rows, total, empty) { return '<div class="card"><div class="card-head"><h2>' + title + "</h2>" + money(total) + "</div>" + (rows || '<p class="muted">' + empty + "</p>") + "</div>"; }
+    var einL = R.einOffen.length ? '<ul class="mini-list">' + R.einOffen.map(function (r) { return "<li><span>" + esc(r.item.beschreibung) + "</span>" + money(rest(r)) + "</li>"; }).join("") + "</ul>" : "";
+    var ausL = R.fixOffen.length + R.carry.length ? '<ul class="mini-list mc-aus">' + R.fixOffen.map(function (r) { return '<li><span>' + esc(r.item.beschreibung) + "</span>" + money(rest(r)) + btn("✓", "haken", ' data-id="' + r.item.id + '" title="schon abgegangen"', "btn-sm btn-ghost") + "</li>"; }).join("") +
+      R.carry.map(function (x) { return "<li><span>" + esc(x.row.item.beschreibung) + ' <em class="muted">aus ' + mName(x.monat) + "</em></span>" + money(x.rest) + "<span></span></li>"; }).join("") + "</ul>" : "";
+    var offL = openList().filter(function (o) { return !o.monat || o.monat <= mk; }).map(function (o) { return "<li><span>" + ART[o.art].ico + " " + esc(o.person ? o.person + " · " : "") + esc(o.text) + "</span>" + money(signOf(o) * o.betrag) + "</li>"; }).join("");
+    var kommendC = '<div class="mc-strip">' + next.map(function (m) {
+      var v = vorschau(m);
+      return '<button class="card mc-m" data-act="openMonth" data-month="' + m + '"><span class="muted small">' + mLabel(m, true) + "</span>" + money(v.total) + '<span class="muted small">' + [v.geplant.length ? v.geplant.length + " geplant" : "", v.ruecklagen.length ? v.ruecklagen.length + " Rücklage" : ""].filter(Boolean).join(" · ") + "</span></button>";
+    }).join("") + "</div>";
+    if (ui.lay_monat === "c") return head + banner + gleichung + (vsCard ? '<div class="mc-gap">' + vsCard + "</div>" : "") + '<div class="mc-three">' +
+      listCard("Kommt noch rein", einL, p.ein, "Alles da.") + listCard("Geht noch ab", ausL, p.fix + p.carry, "Alles abgebucht.") + listCard("Offene Posten", offL ? '<ul class="mini-list">' + offL + "</ul>" : "", offenSum, "Nichts offen.") + "</div>" +
+      '<h2 class="mc-h">Kommende Monate</h2>' + kommendC;
+
     return head + banner + '<div class="grid-m"><div class="col">' + hero + wf + '</div><div class="col">' + vsCard + festCard + pastCard + "</div></div>";
+  }
+  // Ansicht wählen (nur zum Ausprobieren der Varianten)
+  function laySwitch(tab, opts) {
+    var cur = ui["lay_" + tab] || "a";
+    return '<div class="seg seg-sm lay-sw" role="group" aria-label="Ansicht">' + opts.map(function (o) { return '<button class="seg-b' + (cur === o[0] ? " on" : "") + '" data-act="layout" data-tab="' + tab + '" data-v="' + o[0] + '">' + o[1] + "</button>"; }).join("") + "</div>";
   }
   function transferForm(mk) {
     var opts = [], m = L.prevMonth(mk); for (var i = 0; i < 6; i++) { opts.push(m); m = L.nextMonth(m); }
@@ -564,13 +630,46 @@
     var groups = Object.keys(ART).map(function (x) {
       var g = openList().filter(function (o) { return o.art === x; });
       if (!g.length) return "";
-      return '<div class="card"><h2>' + ART[x].ico + " " + ART[x].label + ' <span class="cnt">' + g.length + '</span></h2><ul class="olist">' + g.map(oRow).join("") + "</ul></div>";
+      return '<div class="card"><h2>' + ART[x].ico + " " + ART[x].label + ' <span class="cnt">' + g.length + '</span></h2><ul class="olist">' + g.map(function (o) { return oRow(o); }).join("") + "</ul></div>";
     }).join("");
     var done = state.offen.filter(function (o) { return o.erledigt; });
     var doneCard = done.length ? '<div class="card"><button class="btn-link" data-act="toggleDone">' + (ui.showDone ? "▾" : "▸") + " Erledigt (" + done.length + ")</button>" +
       (ui.showDone ? '<ul class="olist done">' + done.map(function (o) { if (ui.editO === o.id) return oEdit(o); return "<li><span>" + esc((o.person ? o.person + " · " : "") + o.text) + '</span><span class="muted small">' + esc(o.erledigtWie || "") + "</span>" + money(signOf(o) * o.betrag, "") + btn("✎", "editO", ' data-o="' + o.id + '" title="Bearbeiten"', "btn-sm btn-ghost") + btn("↶ wieder öffnen", "reopenItem", ' data-o="' + o.id + '"', "btn-sm") + "</li>"; }).join("") + "</ul>" : "") + "</div>" : "";
-    return '<h1 class="page-t">Offene Posten</h1><p class="lead muted">Alles, was noch nicht erledigt ist. Es wandert automatisch in den nächsten Monat mit, bis du es abhakst oder der Import es erledigt.</p>' +
-      '<div class="grid-o"><div class="col">' + form + groups + doneCard + '</div><div class="col">' + pCard + "</div></div>";
+    var lay = ui.lay_offen || "a", sw = laySwitch("offen", [["a", "Klassisch"], ["b", "Personen"], ["c", "Liste"]]);
+    var titleRow = '<div class="mhead"><div><h1 class="page-t">Offene Posten</h1><div class="muted">Wandert automatisch in den nächsten Monat mit, bis es erledigt ist.</div></div><div class="mh-act">' + sw + "</div></div>";
+    var all = openList(), sumArt = function (a2) { return all.filter(function (o) { return o.art === a2; }).reduce(function (s2, o) { return s2 + signOf(o) * o.betrag; }, 0); };
+    var addBtn = btn(ui.addOpen ? "Schließen" : "＋ Neu eintragen", "addToggle", "", ui.addOpen ? "btn-ghost" : "btn-primary");
+    var formMaybe = ui.addOpen ? form : "";
+    var sumTiles = '<div class="ob-tiles">' + [["forderung", "Dir wird geschuldet"], ["schuld", "Du schuldest"], ["ruecklage", "Rücklagen"], ["schwebend", "Schwebend"], ["geplant", "Geplant"]].map(function (x) {
+      var n = all.filter(function (o) { return o.art === x[0]; }).length;
+      return '<div class="card ob-tile' + (n ? "" : " empty") + '"><span class="muted small">' + ART[x[0]].ico + " " + x[1] + "</span>" + money(sumArt(x[0])) + '<span class="muted small">' + n + " Einträge</span></div>";
+    }).join("") + "</div>";
+    if (lay === "b") {
+      var byP = {}; all.filter(function (o) { return o.person; }).forEach(function (o) { (byP[o.person] = byP[o.person] || []).push(o); });
+      var pCards = Object.keys(byP).sort(function (x, y) { return byP[y].length - byP[x].length; }).map(function (n) {
+        var l = byP[n], v = l.reduce(function (s2, o) { return s2 + signOf(o) * o.betrag; }, 0);
+        return '<div class="card ob-p"><div class="ob-ph"><span class="ob-av">' + esc(n.slice(0, 1).toUpperCase()) + '</span><div><b>' + esc(n) + '</b><span class="muted small">' + (v > 0 ? "schuldet dir" : v < 0 ? "bekommt von dir" : "ausgeglichen") + "</span></div>" + money(v) + '</div><ul class="olist">' + l.map(function (o) { return oRow(o, true); }).join("") + "</ul></div>";
+      }).join("");
+      var ohne = all.filter(function (o) { return !o.person; });
+      var ohneCard = ohne.length ? '<div class="card"><h2>Ohne Person</h2><ul class="olist">' + ohne.map(function (o) { return oRow(o); }).join("") + "</ul></div>" : "";
+      return titleRow + sumTiles + '<div class="ob-bar">' + addBtn + "</div>" + formMaybe + '<div class="ob-grid">' + pCards + "</div>" + ohneCard + doneCard;
+    }
+    if (lay === "c") {
+      var f = ui.offFilter || "alle", list = all.filter(function (o) { return f === "alle" || o.art === f; }).sort(function (x, y) { return (y.monat || y.seit).localeCompare(x.monat || x.seit) || y.betrag - x.betrag; });
+      var chips = '<div class="oc-chips">' + [["alle", "Alle", all.length]].concat(Object.keys(ART).map(function (a2) { return [a2, ART[a2].ico + " " + ART[a2].label, all.filter(function (o) { return o.art === a2; }).length]; })).map(function (x) {
+        return '<button class="chip' + (f === x[0] ? " on" : "") + '" data-act="offFilter" data-f="' + x[0] + '"' + (x[2] || x[0] === "alle" ? "" : " disabled") + ">" + x[1] + ' <span class="cnt">' + x[2] + "</span></button>";
+      }).join("") + "</div>";
+      var netto = list.reduce(function (s2, o) { return s2 + signOf(o) * o.betrag; }, 0);
+      var rows = list.map(function (o) {
+        if (ui.editO === o.id) return oEdit(o);
+        var wann = o.monat && o.monat > state.active ? "für " + mLabel(o.monat) : o.seit !== state.active ? "seit " + mLabel(o.seit) : "";
+        return '<li class="oc-row"><span class="oc-ico" title="' + ART[o.art].label + '">' + ART[o.art].ico + '</span><span class="oc-t"><b>' + esc(o.text) + '</b><span class="muted small">' + esc([o.person, ART[o.art].short, wann].filter(Boolean).join(" · ")) + "</span></span>" + money(signOf(o) * o.betrag) +
+          '<span class="o-act">' + btn("✎", "editO", ' data-o="' + o.id + '" title="Bearbeiten"', "btn-sm btn-ghost") + btn("✓", "done", ' data-o="' + o.id + '" title="Erledigt"', "btn-sm") + btn("✕", "del", ' data-o="' + o.id + '" title="Löschen"', "btn-sm btn-ghost") + "</span></li>";
+      }).join("");
+      return titleRow + '<div class="ob-bar">' + chips + addBtn + "</div>" + formMaybe + '<div class="card"><div class="card-head"><h2>' + (f === "alle" ? "Alle offenen Posten" : ART[f].label) + ' <span class="cnt">' + list.length + "</span></h2>" + '<span>Summe ' + money(netto) + "</span></div>" +
+        (rows ? '<ul class="olist oc-list">' + rows + "</ul>" : '<p class="muted">Nichts offen.</p>') + "</div>" + doneCard;
+    }
+    return titleRow + '<div class="grid-o"><div class="col">' + form + groups + doneCard + '</div><div class="col">' + pCard + "</div></div>";
   }
   // Bearbeiten-Formular für einen offenen (oder erledigten) Posten
   function oEdit(o) {
@@ -587,10 +686,10 @@
       (art !== "forderung" && art !== "ruecklage" ? '<label><span>Kategorie</span><select id="e-kat">' + cats.map(function (c) { return '<option value="' + c.id + '"' + (c.id === o.kat ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</select></label>" : "") +
       "</div>" + '<div class="o-edit-f">' + btn("Abbrechen", "cancelO", "", "btn-ghost btn-sm") + btn("Speichern", "saveO", ' data-o="' + o.id + '"', "btn-primary btn-sm") + "</div></li>";
   }
-  function oRow(o) {
+  function oRow(o, ohnePerson) {
     if (ui.editO === o.id) return oEdit(o);
     var lnk = o.txId ? state.transactions.find(function (t) { return t.id === o.txId; }) : null;
-    return '<li><div class="o-main"><span class="o-t">' + esc(o.person ? o.person + " · " : "") + esc(o.text) + '</span><span class="muted small">' +
+    return '<li><div class="o-main"><span class="o-t">' + esc(o.person && ohnePerson !== true ? o.person + " · " : "") + esc(o.text) + '</span><span class="muted small">' +
       (o.monat && o.monat > state.active ? "für " + mLabel(o.monat, true) + " · " : o.seit !== state.active ? "seit " + mLabel(o.seit, true) + " · " : "") + (lnk ? "aus Buchung " + esc(lnk.empfaenger.split("/")[0]) + " · " : "") + ART[o.art].short + "</span></div>" +
       money(signOf(o) * o.betrag) + '<span class="o-act">' + btn("✎", "editO", ' data-o="' + o.id + '" title="Bearbeiten"', "btn-sm btn-ghost") + btn("✓", "done", ' data-o="' + o.id + '" title="Erledigt"', "btn-sm") + btn("✕", "del", ' data-o="' + o.id + '" title="Löschen"', "btn-sm btn-ghost") + "</span></li>";
   }
@@ -774,6 +873,7 @@
   try {
     var sp = localStorage.getItem("bosal.palette"); if (sp && (sp === "eigene" || PALETTES.some(function (p) { return p[0] === sp; }))) ui.palette = sp;
     var sm = localStorage.getItem("bosal.mode"); if (sm) ui.mode = sm;
+    ui.lay_monat = localStorage.getItem("bosal.lay.monat") || "a"; ui.lay_offen = localStorage.getItem("bosal.lay.offen") || "a";
     ui.custom = localStorage.getItem("bosal.custom") || "#E0457B";
   } catch (e) { ui.custom = "#E0457B"; }
   function applyTheme() {
@@ -889,6 +989,10 @@
       if (ek) oe.kat = ek.value; else if (eart === "ruecklage") oe.kat = "sparen";
       ui.editO = null; ui.editArt = null; ui.editDraft = null; toast("Gespeichert."); return;
     }
+    if (a === "layout") { ui["lay_" + d.tab] = d.v; try { localStorage.setItem("bosal.lay." + d.tab, d.v); } catch (er) {} render(); return; }
+    if (a === "addToggle") { ui.addOpen = !ui.addOpen; render(); return; }
+    if (a === "offFilter") { ui.offFilter = d.f; render(); return; }
+    if (a === "goOffen") { ui.view = "offen"; window.scrollTo(0, 0); render(); return; }
     if (a === "txAll") { ui.txAll = true; render(); return; }
     if (a === "fpOpen") { ui.fpOpen = ui.fpOpen === d.id ? null : d.id; render(); return; }
     if (a === "fpAdd") { mark("Fester Posten hinzugefügt"); var nid = uid("exp"); ui.fpOpen = nid; state.expected.push({ id: nid, beschreibung: "Neuer Posten", typ: "Fixkosten", betrag: -10, anteil: 1, rhythmus: "monatlich", monate: [], zahlweg: "Lastschrift", suchbegriff: "", stichtag: 0, notiz: "", aktiv: true, kategorieId: "vertraege" }); enrichEverything(); render(); return; }

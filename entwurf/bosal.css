@@ -183,3 +183,79 @@ body { padding-top: 0; }
 }
 .md-kv > div { min-width: 0; }
 .md-kv dd { white-space: normal; text-align: right; min-width: 0; overflow-wrap: anywhere; }
+/* ---------- Ansichten zum Ausprobieren ---------- */
+.mh-act { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; }
+.lay-sw { margin-right: 4px; }
+/* Monat B: Übersicht */
+.mb-tiles { display: grid; grid-template-columns: 1.35fr 0.5fr 0.5fr; grid-template-rows: auto auto; gap: var(--gap); margin-bottom: var(--gap); }
+.mb-hero { grid-row: 1 / 3; justify-content: center; }
+.mb-tile { display: flex; flex-direction: column; gap: 4px; text-align: left; border: 0; font: inherit; color: var(--ink); cursor: pointer; }
+.mb-tile:disabled { cursor: default; }
+.mb-tile .num { font-size: 22px; font-weight: 800; }
+.mb-tl { font-size: 13px; font-weight: 700; color: var(--muted); }
+.mb-plan { list-style: none; margin: 0; padding: 0; }
+.mb-plan li { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto 26px; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 14px; }
+.mb-plan li:last-child { border-bottom: 0; }
+.mb-plan .mb-day { font-size: 12px; font-weight: 700; color: var(--muted); }
+.mb-plan .mb-pn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mb-plan li.done .mb-pn, .mb-plan li.done .num { color: var(--muted); text-decoration: line-through; }
+.mb-plan .ck { width: 22px; height: 22px; border-radius: 7px; border: 2px solid var(--line-strong); background: transparent; color: #fff; display: grid; place-items: center; cursor: pointer; font-size: 12px; padding: 0; }
+.mb-plan li.done .ck { background: var(--pos); border-color: var(--pos); }
+.mb-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mb-bars .linkrow { width: 100%; display: grid; grid-template-columns: 56px 1fr auto; gap: 10px; align-items: center; }
+.mb-bar { height: 10px; border-radius: 6px; background: var(--surface2); overflow: hidden; }
+.mb-bar i { display: block; height: 100%; border-radius: 6px; background: var(--pos); }
+.mb-bar i.neg { background: var(--neg); }
+.mb-calc > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.mb-calc > summary::-webkit-details-marker { display: none; }
+.mb-calc > summary h2 { margin: 0; }
+.mb-calc[open] > summary span { display: none; }
+.mb-calc .wf { margin-top: 10px; }
+/* Monat C: Rechnung */
+.mc-head { margin-bottom: var(--gap); }
+.mc-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap; }
+.mc-num { font-size: 48px; font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; }
+.mc-konten { display: grid; grid-template-columns: repeat(3, minmax(130px, 1fr)); gap: 10px; }
+.mc-konten .kf { flex-direction: column; align-items: stretch; gap: 4px; font-size: 12px; color: var(--muted); }
+.mc-chart { display: flex; gap: 8px; margin-top: 20px; }
+.mc-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.mc-area { position: relative; width: 100%; height: 170px; }
+.mc-bar { position: absolute; left: 12%; right: 12%; border-radius: 6px; }
+.mc-bar.pos { background: color-mix(in srgb, var(--pos) 70%, transparent); }
+.mc-bar.neg { background: color-mix(in srgb, var(--neg) 70%, transparent); }
+.mc-bar.tot { background: var(--accent); }
+.mc-zero { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--line-strong); }
+.mc-col b { font-size: 13px; }
+.mc-col .small { line-height: 1.2; }
+.mc-gap { margin-bottom: var(--gap); }
+.mc-three { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); align-items: start; }
+.mc-aus li { display: grid; grid-template-columns: minmax(0, 1fr) auto 32px; gap: 8px; align-items: center; }
+.mc-h { margin: 22px 0 10px; font-size: 16px; }
+.mc-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--gap); }
+.mc-m { display: flex; flex-direction: column; gap: 4px; text-align: left; border: 0; font: inherit; color: var(--ink); cursor: pointer; }
+.mc-m .num { font-size: 20px; font-weight: 800; }
+/* Offen B: Personen, C: Liste */
+.ob-tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--gap); margin-bottom: var(--gap); }
+.ob-tile { display: flex; flex-direction: column; gap: 4px; }
+.ob-tile .num { font-size: 20px; font-weight: 800; }
+.ob-tile.empty { opacity: .55; }
+.ob-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: var(--gap); }
+.ob-bar > .btn:only-child { margin-left: auto; }
+.ob-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: var(--gap); margin: var(--gap) 0; align-items: start; }
+.ob-ph { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: center; margin-bottom: 6px; }
+.ob-ph > div { display: flex; flex-direction: column; }
+.ob-ph .num { font-size: 20px; font-weight: 800; }
+.ob-av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #fff; background: linear-gradient(135deg, var(--p1), var(--p2)); }
+.oc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.oc-list li.oc-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; }
+.oc-ico { font-size: 18px; text-align: center; }
+.oc-t { display: flex; flex-direction: column; min-width: 0; }
+.oc-t b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.add + .ob-grid, .add { margin-bottom: var(--gap); }
+@media (max-width: 900px) {
+  .mb-tiles { grid-template-columns: 1fr 1fr; } .mb-hero { grid-column: 1 / -1; grid-row: auto; }
+  .mc-three, .mc-strip { grid-template-columns: 1fr 1fr; } .mc-konten { grid-template-columns: 1fr; width: 100%; }
+  .ob-tiles { grid-template-columns: 1fr 1fr; } .ob-grid { grid-template-columns: 1fr; }
+  .mc-col b { font-size: 11px; }
+}
+@media (max-width: 560px) { .mc-three, .mc-strip { grid-template-columns: 1fr; } .mc-num { font-size: 38px; } }

@@ -225,3 +225,14 @@ Annahmen → Diagramme (Vermögen, FI-Test; Überarbeitung folgt) → „So wird
 - Vorschau eines kommenden Monats: neuer Abschnitt „Rücklagen für <Monat>“ (Wofür, Betrag). Wird als
   offener Posten `ruecklage` mit `monat` gespeichert, zählt in der Vorschau und ab diesem Monat im Kassensturz.
 - Im Tab Offen haben Rücklagen jetzt auch „Für Monat“ (neu und beim Bearbeiten).
+
+## Design-Varianten zum Ausprobieren (Testversion 22)
+
+Umschalter oben rechts in Monat und Offen (gespeichert in `localStorage` `bosal.lay.monat/offen`):
+- **Monat:** Klassisch (bisher) · Übersicht (großes „Übrig“ mit „pro Tag“, 4 Kacheln, Fahrplan der festen
+  Posten nach Tag, Kontostände, Offen kompakt, kommende Monate als Balken, Rechnung zum Aufklappen) ·
+  Rechnung (Übrig + Kontostände, Treppe Konten → Vorgemerkt → Kommt rein → Geht ab → Offen → Übrig,
+  darunter drei Listen und kommende Monate als Karten).
+- **Offen:** Klassisch · Personen (Summen-Kacheln je Art, eine Karte pro Person mit Saldo, „Ohne Person“) ·
+  Liste (Filter nach Art, eine Liste mit Summe, „Neu eintragen“ einklappbar).
+- Neue Kennzahl: „≈ X € pro Tag“ = Übrig ÷ verbleibende Tage des Budgetmonats.
