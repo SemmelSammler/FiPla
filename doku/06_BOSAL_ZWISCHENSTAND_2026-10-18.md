@@ -208,3 +208,14 @@ Annahmen → Diagramme (Vermögen, FI-Test; Überarbeitung folgt) → „So wird
 - **Mehr:** „Deine Daten“ als zweispaltige Übersicht; „Feste Posten“ als gruppierte Liste (Einnahmen,
   Fixkosten, Raten, Platzhalter, Aus) mit Betrag, Monatsanteil, zuletzt erkannt; Antippen öffnet das
   Formular. Funktioniert auch schmal (Handy).
+
+## Vorgemerkte Umsätze (Testversion 20)
+
+- Sparkasse: Der Kontostand (Sichteinlagen) enthält nur gebuchte Umsätze (vom Nutzer bestätigt).
+  BoSal zieht deshalb alle vorgemerkten Girokonto-Umsätze als eigene Zeile „Vorgemerkt, noch nicht im
+  Kontostand“ ab. Schalter `state.vgImSaldo`, falls ein Kontostand sie doch enthält.
+- Beim Import gilt die Datei als aktueller Stand: Alte Vormerkungen ab dem ersten Tag der Datei werden
+  verworfen (auch stornierte verschwinden).
+- Posten, die am 1. fällig sind (Miete, KfW, Barmenia, Haushaltsgeld), haben Stichtag 25: Sie werden
+  oft schon ab dem 28. vorgemerkt und gehören dann zum nächsten Monat. Gespeicherte Daten werden beim
+  Laden angepasst (`version` 2).
