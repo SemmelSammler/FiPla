@@ -866,7 +866,7 @@
     if (m.type === "syncConnect") {
       body = "<h2>Mit Schlüssel verbinden</h2><p class=\"muted\">Den Schlüssel findest du auf deinem anderen Gerät unter Mehr → Abgleich → Schlüssel zeigen.</p>" +
         '<div class="form"><label class="grow"><span>Schlüssel</span><input id="sy-key" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX" autocapitalize="characters" autocomplete="off" spellcheck="false"></label>' +
-        (httpOrigin ? "" : '<label class="grow"><span>Server</span><input id="sy-srv" value="' + esc(syncCfg.server || "") + '" placeholder="https://bosal.pages.dev" autocomplete="off" spellcheck="false"></label>') + "</div>" +
+        (httpOrigin ? "" : '<label class="grow"><span>Server</span><input id="sy-srv" value="' + esc(syncCfg.server || "") + '" placeholder="' + STD_SERVER + '" autocomplete="off" spellcheck="false"></label>') + "</div>" +
         '<div class="m-foot">' + btn("Abbrechen", "closeModal", "", "btn-ghost") + btn("Verbinden", "syncConnect", "", "btn-primary") + "</div>";
     }
     if (m.type === "syncKonflikt") {
@@ -1148,10 +1148,12 @@
   var SY = window.BoSalSync, SYNC_CFG = "bosal.sync";
   var syncCfg = (function () { try { return JSON.parse(localStorage.getItem(SYNC_CFG)) || {}; } catch (e) { return {}; } })();
   var syncRun = { busy: false, err: null, timer: null };
-  var httpOrigin = /^https?:$/.test(location.protocol);
+  // Läuft die App selbst auf dem Server (Web-App), geht der Abgleich an dieselbe Adresse; sonst (Desktop-App, Datei) an STD_SERVER.
+  var STD_SERVER = "https://bosal-2t8.pages.dev";
+  var httpOrigin = /^https?:$/.test(location.protocol) && location.hostname !== "tauri.localhost";
   function syncSaveCfg() { try { localStorage.setItem(SYNC_CFG, JSON.stringify(syncCfg)); } catch (e) {} }
-  function syncServer() { return syncCfg.server || ""; }
-  function syncReady() { return !!(SY && syncCfg.key && (httpOrigin || syncCfg.server)); }
+  function syncServer() { return syncCfg.server || (httpOrigin ? "" : STD_SERVER); }
+  function syncReady() { return !!(SY && syncCfg.key); }
   function syncChanged(json) {
     var h = SY && SY.hash(json);
     if (!syncReady() || h === syncCfg.hash || h === syncRun.pending) return;   // Neuzeichnen ohne Änderung verschiebt nichts
@@ -1187,7 +1189,7 @@
     hist.past = []; hist.future = []; render();
   }
   function syncCard() {
-    var srv = httpOrigin ? "" : '<label class="m-field sync-srv"><span>Server</span><input data-act="syncServer" value="' + esc(syncCfg.server || "") + '" placeholder="https://bosal.pages.dev" autocomplete="off" spellcheck="false"></label>';
+    var srv = httpOrigin ? "" : '<label class="m-field sync-srv"><span>Server</span><input data-act="syncServer" value="' + esc(syncCfg.server || "") + '" placeholder="' + STD_SERVER + '" autocomplete="off" spellcheck="false"></label>';
     var head = '<div class="card-head"><h2>Abgleich zwischen Geräten</h2>' + (syncCfg.key ? '<span class="pill">' + (syncRun.err ? "Problem" : "an") + "</span>" : '<span class="pill warn">aus</span>') + "</div>";
     if (!syncCfg.key) return '<div class="card">' + head + '<p class="muted small">Deine Daten werden auf dem Gerät mit deinem Schlüssel verschlüsselt. Der Server sieht nur Datensalat. Auf allen Geräten derselbe Stand.</p>' + srv +
       '<div class="btn-row">' + btn("Neu einrichten", "syncNew", "", "btn-primary") + btn("Mit Schlüssel verbinden", "syncConnectAsk", "", "") + "</div></div>";
@@ -1198,7 +1200,6 @@
   // Click-Aktionen des Abgleichs; true = erledigt
   function syncHandle(a) {
     if (a === "syncNew") {
-      if (!httpOrigin && !syncCfg.server) { toast("Bitte zuerst die Server-Adresse eintragen."); return true; }
       syncCfg = { key: SY.newKey(), server: syncCfg.server, v: 0 }; syncSaveCfg(); ui.syncShowKey = true; state.angelegt = true;
       syncPush(true); render(); toast("Abgleich eingerichtet. Schreib dir den Schlüssel auf."); return true;
     }
@@ -1207,7 +1208,6 @@
       var key = document.getElementById("sy-key").value, srvIn = document.getElementById("sy-srv");
       if (srvIn) syncCfg.server = srvIn.value.trim().replace(/\/+$/, "");
       if (!SY.valid(key)) { toast("Der Schlüssel hat 20 Zeichen, z. B. ABCD-EFGH-JKLM-NPQR-STUV."); return true; }
-      if (!httpOrigin && !syncCfg.server) { toast("Bitte die Server-Adresse eintragen."); return true; }
       toast("Verbinde …");
       SY.pull(syncServer(), key).then(function (r) {
         if (!r) { toast("Unter diesem Schlüssel ist noch nichts gespeichert."); return; }
