@@ -219,3 +219,9 @@ Annahmen → Diagramme (Vermögen, FI-Test; Überarbeitung folgt) → „So wird
 - Posten, die am 1. fällig sind (Miete, KfW, Barmenia, Haushaltsgeld), haben Stichtag 25: Sie werden
   oft schon ab dem 28. vorgemerkt und gehören dann zum nächsten Monat. Gespeicherte Daten werden beim
   Laden angepasst (`version` 2).
+
+## Rücklagen in kommenden Monaten (Testversion 21)
+
+- Vorschau eines kommenden Monats: neuer Abschnitt „Rücklagen für <Monat>“ (Wofür, Betrag). Wird als
+  offener Posten `ruecklage` mit `monat` gespeichert, zählt in der Vorschau und ab diesem Monat im Kassensturz.
+- Im Tab Offen haben Rücklagen jetzt auch „Für Monat“ (neu und beim Bearbeiten).

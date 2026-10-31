@@ -197,8 +197,9 @@
   function vorschau(mk) {
     var plan = state.expected.filter(function (i) { return i.aktiv; }).reduce(function (s, i) { return s + sollOf(mk, i); }, 0);
     var gepl = openList().filter(function (o) { return o.art === "geplant" && o.monat === mk; });
-    var gv = gepl.reduce(function (s, o) { return s + signOf(o) * o.betrag; }, 0), tr = transfersFor(mk);
-    return { plan: plan, geplant: gepl, gv: gv, tr: tr, total: Math.round((plan + gv + tr.sum) * 100) / 100 };
+    var rl = openList().filter(function (o) { return o.art === "ruecklage" && o.monat === mk; });
+    var gv = gepl.reduce(function (s, o) { return s + signOf(o) * o.betrag; }, 0), rv = rl.reduce(function (s, o) { return s - o.betrag; }, 0), tr = transfersFor(mk);
+    return { plan: plan, geplant: gepl, gv: gv, ruecklagen: rl, rv: rv, tr: tr, total: Math.round((plan + gv + rv + tr.sum) * 100) / 100 };
   }
   function rest(r) { if (r.hand === true) return 0; var x = r.soll - (r.hand === false ? 0 : r.ist); return r.soll >= 0 ? Math.max(0, x) : Math.min(0, x); }
 
@@ -422,6 +423,10 @@
       sec("ein", "Kommt rein", sumRows(ein), ein.length + " feste Einnahmen", edRows(ein)) +
       sec("aus", "Geht ab", sumRows(aus), aus.length + " Fixkosten und Raten" + (nOv ? " · " + nOv + " angepasst" : ""), edRows(aus)) +
       sec("gepl", "Geplant für " + mName(mk), v.gv, v.geplant.length + " Einträge", gepl) +
+      sec("rl", "Rücklagen für " + mName(mk), v.rv, v.ruecklagen.length ? v.ruecklagen.length + " Rücklage(n), gehen aufs Sparkonto" : "z. B. für deinen Urlaub",
+        '<ul class="mini-list">' + v.ruecklagen.map(function (o) { return "<li><span>" + esc(o.text) + "</span><span>" + money(-o.betrag) + " " + btn("✕", "del", ' data-o="' + o.id + '"', "btn-sm btn-ghost") + "</span></li>"; }).join("") + "</ul>" +
+        '<div class="form tf"><label class="grow"><span>Wofür</span><input id="rm-text" placeholder="z. B. Urlaub"></label><label><span>Betrag</span><input id="rm-betrag" class="in-num" inputmode="decimal" placeholder="0,00"></label>' +
+        btn("Rücklage eintragen", "addRueckM", ' data-m="' + mk + '"', "btn-primary") + "</div>") +
       sec("tr", "Zwischen Monaten verschoben", v.tr.sum, v.tr.list.length + " Verschiebung(en)", trl) +
       '<div class="wf-total"><span>Voraussichtlich übrig</span>' + money(v.total) + "</div></div></div>" +
       '<div class="col"><div class="card"><h2>So funktioniert die Vorschau</h2><ul class="startlist small"><li>Feste Posten kannst du nur für diesen Monat anders planen, z. B. Weihnachtsgeld oder eine Strom-Nachzahlung. Der Standard bleibt unverändert.</li><li>„entfällt“ setzt einen Posten für diesen Monat auf 0.</li><li>Wird der Monat aktiv, rechnet der Kassensturz mit genau diesen Planwerten weiter.</li></ul></div></div></div>';
@@ -505,6 +510,7 @@
     var pastCard = '<div class="card"><h2>Kommende Monate</h2><ul class="mini-list">' + next.map(function (m) {
       var v = vorschau(m), extra = [];
       if (v.geplant.length) extra.push(v.geplant.length + " geplant");
+      if (v.ruecklagen.length) extra.push(v.ruecklagen.length + " Rücklage" + (v.ruecklagen.length > 1 ? "n" : ""));
       if (v.tr.list.length) extra.push((v.tr.sum < 0 ? "−" : "+") + eur(Math.abs(v.tr.sum)) + " verschoben");
       var ov = state.overrides[m] && Object.keys(state.overrides[m]).length;
       if (ov) extra.push(ov + " angepasst");
@@ -549,6 +555,7 @@
       ((a === "forderung" || a === "schuld") ? '<label><span>Person</span><input id="f-person" placeholder="z. B. Anna"></label>' : "") +
       '<label class="grow"><span>Wofür</span><input id="f-text" placeholder="' + (a === "ruecklage" ? "z. B. Urlaub" : "z. B. Essen gehen") + '"></label>' +
       '<label><span>Betrag</span><input id="f-betrag" class="in-num" inputmode="decimal" placeholder="0,00"></label>' +
+      (a === "ruecklage" ? '<label><span>Für Monat</span><select id="f-monat">' + [0, 1, 2, 3, 4, 5].map(function (i) { var m = state.active; for (var j = 0; j < i; j++) m = L.nextMonth(m); return '<option value="' + m + '">' + mLabel(m, true) + "</option>"; }).join("") + "</select></label>" : "") +
       (a === "geplant" ? '<label><span>Richtung</span><select id="f-richtung"><option value="-1">Ausgabe</option><option value="1">Einnahme</option></select></label>' +
         '<label><span>Für Monat</span><select id="f-monat">' + [0, 1, 2, 3, 4, 5].map(function (i) { var m = state.active; for (var j = 0; j < i; j++) m = L.nextMonth(m); return '<option value="' + m + '">' + mLabel(m, true) + "</option>"; }).join("") + "</select></label>" : "") +
       (a !== "forderung" && a !== "ruecklage" ? '<label><span>Kategorie</span><select id="f-kat">' + cats.map(function (c) { return '<option value="' + c.id + '">' + esc(c.name) + "</option>"; }).join("") + "</select></label>" : "") +
@@ -574,6 +581,7 @@
       '<label><span>Person</span><input id="e-person" value="' + esc(dr.person != null ? dr.person : o.person || "") + '" placeholder="optional"></label>' +
       '<label class="grow"><span>Wofür</span><input id="e-text" value="' + esc(dr.text != null ? dr.text : o.text) + '"></label>' +
       '<label><span>Betrag</span><input id="e-betrag" class="in-num" inputmode="decimal" value="' + (dr.betrag != null ? esc(dr.betrag) : fmt.format(o.betrag)) + '"></label>' +
+      (art === "ruecklage" ? '<label><span>Für Monat</span><select id="e-monat">' + ms.map(function (x) { return '<option value="' + x + '"' + (x === (o.monat || state.active) ? " selected" : "") + ">" + mLabel(x, true) + "</option>"; }).join("") + "</select></label>" : "") +
       (art === "geplant" ? '<label><span>Richtung</span><select id="e-richtung"><option value="-1"' + ((o.richtung || -1) < 0 ? " selected" : "") + '>Ausgabe</option><option value="1"' + (o.richtung > 0 ? " selected" : "") + ">Einnahme</option></select></label>" +
         '<label><span>Für Monat</span><select id="e-monat">' + ms.map(function (x) { return '<option value="' + x + '"' + (x === (o.monat || state.active) ? " selected" : "") + ">" + mLabel(x, true) + "</option>"; }).join("") + "</select></label>" : "") +
       (art !== "forderung" && art !== "ruecklage" ? '<label><span>Kategorie</span><select id="e-kat">' + cats.map(function (c) { return '<option value="' + c.id + '"' + (c.id === o.kat ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("") + "</select></label>" : "") +
@@ -819,6 +827,12 @@
     if (a === "openMonth") { ui.month = d.month || null; ui.view = "monat"; window.scrollTo(0, 0); render(); return; }
     if (a === "ovrReset") { mark("Planwert zurückgesetzt"); delete state.overrides[d.m][d.id]; render(); return; }
     if (a === "ovrZero") { mark("Posten entfällt"); (state.overrides[d.m] = state.overrides[d.m] || {})[d.id] = 0; render(); return; }
+    if (a === "addRueckM") {
+      var rb = parseNum(document.getElementById("rm-betrag").value), rt = document.getElementById("rm-text").value.trim();
+      if (!rt || isNaN(rb) || rb === 0) { toast("Bitte „Wofür“ und Betrag ausfüllen."); return; }
+      mark("Rücklage für " + mName(d.m)); state.offen.push({ id: uid("o"), art: "ruecklage", text: rt, betrag: Math.abs(rb), kat: "sparen", monat: d.m, seit: state.active });
+      ui.open_vrl = true; toast("Rücklage für " + mName(d.m) + " eingetragen."); return;
+    }
     if (a === "addPlanM") {
       var pb = parseNum(document.getElementById("pm-betrag").value), pt = document.getElementById("pm-text").value.trim();
       if (!pt || isNaN(pb) || pb === 0) { toast("Bitte „Wofür“ und Betrag ausfüllen."); return; }
@@ -869,7 +883,9 @@
       mark("„" + et + "“ geändert");
       oe.art = eart; oe.text = et; oe.betrag = Math.abs(eb); oe.person = ep;
       var er = document.getElementById("e-richtung"), em = document.getElementById("e-monat"), ek = document.getElementById("e-kat");
-      if (eart === "geplant") { oe.richtung = er ? +er.value : -1; oe.monat = em ? em.value : state.active; } else { delete oe.richtung; delete oe.monat; }
+      if (eart === "geplant") { oe.richtung = er ? +er.value : -1; oe.monat = em ? em.value : state.active; }
+      else if (eart === "ruecklage") { delete oe.richtung; oe.monat = em ? em.value : state.active; }
+      else { delete oe.richtung; delete oe.monat; }
       if (ek) oe.kat = ek.value; else if (eart === "ruecklage") oe.kat = "sparen";
       ui.editO = null; ui.editArt = null; ui.editDraft = null; toast("Gespeichert."); return;
     }
