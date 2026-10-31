@@ -259,3 +259,4 @@ body { padding-top: 0; }
   .mc-col b { font-size: 11px; }
 }
 @media (max-width: 560px) { .mc-three, .mc-strip { grid-template-columns: 1fr; } .mc-num { font-size: 38px; } }
+.st-mode { margin: 4px 0 12px; }

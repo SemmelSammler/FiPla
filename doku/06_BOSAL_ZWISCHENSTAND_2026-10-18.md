@@ -236,3 +236,12 @@ Umschalter oben rechts in Monat und Offen. **Entscheidung (Testversion 23): Mona
 - **Offen:** Klassisch · Personen (Summen-Kacheln je Art, eine Karte pro Person mit Saldo, „Ohne Person“) ·
   Liste (Filter nach Art, eine Liste mit Summe, „Neu eintragen“ einklappbar).
 - Neue Kennzahl: „≈ X € pro Tag“ = Übrig ÷ verbleibende Tage des Budgetmonats.
+
+## Ausgaben „Mein Anteil“ (Testversion 24)
+
+- Mit „feste Posten mitzählen“: Was andere für geteilte feste Posten zahlen (Posten mit „Anteil von
+  anderen“, z. B. Mietanteil Laura), wird anteilig von den gedeckten Posten (Miete, Strom, Internet)
+  abgezogen. Posten mit eigenem Anteil < 100 % zählen nur mit diesem Anteil. Nur in der Auswertung.
+- Teilen hat zwei Arten: „Person zahlt mir zurück“ (offener Posten wie bisher) oder „Nur für die
+  Auswertung“ (`tx.split`, kein offener Posten, wirkt nur auf „Mein Anteil“, wieder entfernbar).
+- Mehr → Feste Posten: „Durch Anteil anderer gedeckt?“ bzw. „Anteil von anderen?“ einstellbar.

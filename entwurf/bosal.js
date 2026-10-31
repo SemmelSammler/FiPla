@@ -378,8 +378,18 @@
   function report(mk, share) {
     var txs = state.transactions.filter(function (t) { return t.effMonat === mk; })
       .concat(state.kk.filter(function (t) { return t.effMonat === mk && !t.ausgleich; }));
-    var rows = {}, info = { kk: 0, kkDetail: !!kkMonths()[mk], settled: 0, gespart: 0, geteilt: 0, fremd: 0 };
+    var rows = {}, info = { kk: 0, kkDetail: !!kkMonths()[mk], settled: 0, gespart: 0, geteilt: 0, fremd: 0, fixAnteil: 0, fixErst: 0, fixNamen: [] };
     function addC(k, v) { rows[k] = (rows[k] || 0) + v; }
+    // Nur für diese Auswertung: Was andere für geteilte feste Posten zahlen (z. B. Mietanteil für Miete, Strom, Internet),
+    // wird anteilig von diesen Posten abgezogen. Posten mit eigenem Anteil (z. B. 50 %) zählen nur mit diesem Anteil.
+    var itemOf = function (id) { return state.expected.find(function (i) { return i.id === id; }); };
+    var istGeteilt = function (it) { return it && it.typ !== "Einnahme" && it.geteilt; };
+    var factor = 1;
+    if (share && ui.inclFix) {
+      var G = 0; txs.forEach(function (t) { if (t.match && t.betrag < 0 && istGeteilt(itemOf(t.itemId))) G += -t.betrag; });
+      var E = state.transactions.filter(function (t) { var it = itemOf(t.itemId); return t.effMonat === mk && t.match && t.betrag > 0 && it && (it.anteilVon != null ? it.anteilVon : /anteil/i.test(it.beschreibung)); }).reduce(function (s2, t) { return s2 + t.betrag; }, 0);
+      if (G > 0 && E > 0) { factor = Math.max(0, (G - E) / G); info.fixErst = Math.min(E, G); }
+    }
     txs.forEach(function (t) {
       if (t.betrag >= 0 || (t.match && !ui.inclFix)) return;            // Alltag; feste Posten nur auf Wunsch
       var so = t.settles && state.offen.find(function (o) { return o.id === t.settles; });
@@ -388,6 +398,12 @@
       if (isKK(t)) { info.kk += -t.betrag; return; }
       var v = t.betrag;
       if (share) state.offen.forEach(function (o) { if (o.art === "forderung" && o.txId === t.id) { v += o.betrag; info.geteilt += o.betrag; } });
+      if (share && t.split) { v += t.split.betrag; info.geteilt += t.split.betrag; }
+      if (share && t.match) {
+        var it = itemOf(t.itemId);
+        if (istGeteilt(it) && factor < 1) { info.fixAnteil += v - v * factor; if (info.fixNamen.indexOf(it.beschreibung) === -1) info.fixNamen.push(it.beschreibung); v = v * factor; }
+        else if (it && it.anteil != null && it.anteil < 1) { info.fixAnteil += v - v * it.anteil; v = v * it.anteil; }
+      }
       addC(t.kategorieId, v);
     });
     if (share) state.offen.forEach(function (o) { if (o.art === "schuld" && o.seit === mk) { addC(o.kat || "sys-ausgabe", -o.betrag); info.fremd += o.betrag; } });
@@ -715,6 +731,8 @@
     }).join("") + "</ul>";
     var notes = [];
     if (ui.shareMode && R.info.geteilt) notes.push("−" + eur(R.info.geteilt) + " Anteile anderer herausgerechnet");
+    if (ui.shareMode && R.info.fixAnteil) notes.push("Feste Posten mit deinem Anteil: " + eur(Math.abs(R.info.fixAnteil)) + " herausgerechnet" + (R.info.fixErst ? " (davon Mietanteil " + eur(R.info.fixErst) + ", verteilt auf " + R.info.fixNamen.join(", ") + ")" : ""));
+    if (ui.shareMode && !ui.inclFix) notes.push("Tipp: „feste Posten mitzählen“ anhaken, dann siehst du auch Miete & Co. mit deinem Anteil.");
     if (ui.shareMode && R.info.fremd) notes.push("+" + eur(R.info.fremd) + " von anderen für dich bezahlt");
     if (R.info.settled) notes.push(R.info.settled + " Rückzahlung(en) nicht als Ausgabe gezählt");
     if (R.info.gespart) notes.push(eur(R.info.gespart) + " gespart (Rücklage), nicht als Ausgabe gezählt");
@@ -731,8 +749,9 @@
         var it = t.match && state.expected.find(function (i) { return i.id === t.itemId; });
         var tagTxt = isKK(t) ? "Kreditkarten-Abrechnung" : (t.konto === "kk" ? "Karte · " : "") + (so ? (so.art === "ruecklage" ? "Rücklage" : "erledigt: " + so.text) : isUnsorted(t) ? "Unsortiert" : c.name + (it ? " · fester Posten „" + it.beschreibung + "“" : ""));
         return '<li class="tx"><span class="tx-d">' + dLabel(t.datum) + '</span><span class="tx-main"><span class="tx-e">' + esc((t.empfaenger || "").split("/")[0]) + '</span><span class="tx-k"><i style="background:' + (isUnsorted(t) ? "var(--warn)" : c.farbe) + '"></i>' + esc(tagTxt) +
-          (shared.length ? " · geteilt mit " + esc(shared.map(function (o) { return o.person; }).join(", ")) + ", dein Teil " + eur(t.betrag + shared.reduce(function (s, o) { return s + o.betrag; }, 0)) : "") + "</span></span>" +
-          money(t.betrag) + (isKK(t) || so ? "<span></span>" : btn("Teilen", "teilen", ' data-t="' + t.id + '"', "btn-sm")) + "</li>";
+          (shared.length ? " · geteilt mit " + esc(shared.map(function (o) { return o.person; }).join(", ")) + ", dein Teil " + eur(t.betrag + shared.reduce(function (s, o) { return s + o.betrag; }, 0)) : "") +
+          (t.split ? " · geteilt" + (t.split.person ? " mit " + esc(t.split.person) : "") + " (nur Auswertung), dein Teil " + eur(t.betrag + t.split.betrag) : "") + "</span></span>" +
+          money(t.betrag) + (isKK(t) || so ? "<span></span>" : btn(t.split || shared.length ? "Geteilt ✎" : "Teilen", "teilen", ' data-t="' + t.id + '"', "btn-sm" + (t.split || shared.length ? " btn-ghost" : ""))) + "</li>";
       }).join("") + "</ul>" + (txs.length > 40 && !ui.txAll ? btn("Alle " + txs.length + " zeigen", "txAll", "", "btn-sm") : "") + "</div>";
     var past = Object.keys(state.frozen).sort().reverse();
     var hist2 = '<div class="card"><h2>Abgeschlossene Monate</h2><ul class="mini-list">' + past.map(function (m) {
@@ -802,6 +821,8 @@
         sel("zahlweg", "Zahlweg", opt(["Lastschrift", "Dauerauftrag", "Überweisung", "PayPal", "Kreditkarte", "Kontobelastung", "offen"].map(function (z) { return [z, z]; }), it.zahlweg || "Lastschrift")) +
         inp("suchbegriff", it.kk ? "Suchbegriff (Kreditkarte)" : "Suchbegriff (Kontoauszug)", it.suchbegriff || "", "", "z. B. stadtwerke") +
         inp("stichtag", "Stichtag (0 = keiner)", it.stichtag || 0, "in-num") +
+        (ein ? sel("anteilVon", "Anteil von anderen?", opt([["nein", "nein, mein Geld"], ["ja", "ja (z. B. Mietanteil)"]], (it.anteilVon != null ? it.anteilVon : /anteil/i.test(it.beschreibung)) ? "ja" : "nein"))
+          : sel("geteilt", "Durch Anteil anderer gedeckt?", opt([["nein", "nein"], ["ja", "ja (z. B. Miete, Strom)"]], it.geteilt ? "ja" : "nein"))) +
         '<label class="fp-wide"><span>Notiz</span><input data-act="fp" data-id="' + it.id + '" data-f="notiz" value="' + esc(it.notiz || "") + '"></label>' +
         "</div>" +
         '<div class="fp-foot"><span class="muted small">' + (ein ? "" : "Pro Monat für die Zukunft: <b>" + eur(-proMonat(pmk, it)) + "</b>. ") + (last ? "Zuletzt erkannt: " + dLabel(last.datum) + last.datum.slice(0, 4) + ", " + eur(last.betrag) + "." : "") + "</span>" + btn("Löschen", "fpDel", ' data-id="' + it.id + '"', "btn-sm btn-ghost") + "</div>";
@@ -862,11 +883,14 @@
     }
     if (m.type === "teilen") {
       var t = txById(m.t);
+      var nurA = m.nur != null ? m.nur : !!t.split;
       body = "<h2>Buchung teilen</h2><p class=\"muted\">" + esc(t.empfaenger) + " · " + eur(t.betrag) + "</p>" +
-        '<div class="form"><label class="grow"><span>Mit wem?</span><input id="s-person" placeholder="z. B. Anna"></label>' +
-        '<label><span>Ihr/sein Anteil</span><input id="s-betrag" class="in-num" inputmode="decimal" value="' + fmt.format(Math.abs(t.betrag) / 2) + '"></label></div>' +
-        '<p class="muted small">Daraus wird „schuldet mir“. In den Ausgaben zählt nur noch dein Teil. Kommt das Geld zurück, erkennt der Import es.</p>' +
-        '<div class="m-foot">' + btn("Abbrechen", "closeModal", "", "btn-ghost") + btn("Teilen", "doTeilen", ' data-t="' + t.id + '"', "btn-primary") + "</div>";
+        '<div class="seg seg-sm st-mode"><button class="seg-b' + (!nurA ? " on" : "") + '" data-act="teilMode" data-v="0">Person zahlt mir zurück</button><button class="seg-b' + (nurA ? " on" : "") + '" data-act="teilMode" data-v="1">Nur für die Auswertung</button></div>' +
+        '<div class="form"><label class="grow"><span>Mit wem?' + (nurA ? " (optional)" : "") + '</span><input id="s-person" placeholder="z. B. Laura" value="' + esc(t.split ? t.split.person || "" : "") + '"></label>' +
+        '<label><span>Ihr/sein Anteil</span><input id="s-betrag" class="in-num" inputmode="decimal" value="' + fmt.format(t.split ? t.split.betrag : Math.abs(t.betrag) / 2) + '"></label></div>' +
+        '<p class="muted small">' + (nurA ? "Ändert nur die Ausgaben-Auswertung („Mein Anteil“). Es entsteht kein offener Posten, Monat und Zukunft bleiben gleich. Gut, wenn ihr es schon anders verrechnet habt."
+          : "Daraus wird „schuldet mir“ im Tab Offen. In den Ausgaben zählt nur noch dein Teil. Kommt das Geld zurück, erkennt der Import es.") + "</p>" +
+        '<div class="m-foot">' + (t.split ? btn("Teilung entfernen", "unTeilen", ' data-t="' + t.id + '"', "btn-ghost") : "") + btn("Abbrechen", "closeModal", "", "btn-ghost") + btn("Teilen", "doTeilen", ' data-t="' + t.id + '" data-nur="' + (nurA ? 1 : 0) + '"', "btn-primary") + "</div>";
     }
     return '<div class="overlay" data-act="closeModal"><div class="modal" role="dialog" aria-modal="true">' + body + "</div></div>";
   }
@@ -1038,11 +1062,19 @@
     if (a === "teilen") { ui.modal = { type: "teilen", t: d.t }; render(); return; }
     if (a === "doTeilen") {
       var tt = txById(d.t), per = document.getElementById("s-person").value.trim(), bt = parseNum(document.getElementById("s-betrag").value);
+      if (d.nur === "1") {
+        if (isNaN(bt) || bt <= 0 || bt > Math.abs(tt.betrag)) { toast("Bitte einen Anteil zwischen 0 und " + eur(Math.abs(tt.betrag)) + " eintragen."); return; }
+        mark("Buchung geteilt (nur Auswertung)"); tt.split = { person: per, betrag: bt };
+        ui.modal = null; toast("Geteilt, nur in der Auswertung. Dein Teil: " + eur(Math.abs(tt.betrag) - bt) + "."); return;
+      }
       if (!per || isNaN(bt) || bt <= 0) { toast("Bitte Person und Anteil eintragen."); return; }
+      delete tt.split;
       mark("Buchung geteilt");
       state.offen.push({ id: uid("o"), art: "forderung", text: (tt.empfaenger || "").split("/")[0] + " (Anteil)", betrag: bt, person: per, kat: tt.kategorieId, txId: tt.id, seit: state.active });
       ui.modal = null; toast(per + " schuldet dir " + eur(bt) + ". In den Ausgaben zählt nur dein Teil."); return;
     }
+    if (a === "teilMode") { ui.modal.nur = d.v === "1"; render(); return; }
+    if (a === "unTeilen") { var tu = txById(d.t); mark("Teilung entfernt"); delete tu.split; ui.modal = null; toast("Teilung entfernt."); return; }
     if (a === "sortOpen") { ui.sortOpen = true; render(); return; }
     if (a === "sortClose") { ui.sortOpen = false; render(); return; }
     if (a === "skip") { ui.skipped[d.t] = true; render(); return; }
@@ -1073,6 +1105,7 @@
       else if (f === "monate") it.monate = el.value.split(/[^0-9]+/).map(Number).filter(function (x) { return x >= 1 && x <= 12; }).sort(function (x, y) { return x - y; });
       else if (f === "anteil") { var an = parseNum(el.value.replace("%", "")); if (!isNaN(an)) it.anteil = Math.max(0, Math.min(100, an)) / 100; }
       else if (f === "zahlweg") { it.zahlweg = el.value; it.kk = el.value === "Kreditkarte"; }
+      else if (f === "geteilt" || f === "anteilVon") it[f] = el.value === "ja";
       else if (f === "betrag") { var nb = parseNum(el.value); if (!isNaN(nb)) it.betrag = it.typ === "Einnahme" ? Math.abs(nb) : -Math.abs(nb); }
       else if (f === "stichtag") { var sd = parseInt(el.value, 10); it.stichtag = isNaN(sd) ? 0 : Math.max(0, Math.min(31, sd)); }
       else if (f === "typ") { it.typ = el.value; it.betrag = it.typ === "Einnahme" ? Math.abs(it.betrag) : -Math.abs(it.betrag); it.kategorieId = it.typ === "Einnahme" ? "gehalt" : it.typ === "Schulden" ? "schulden" : (it.kategorieId === "gehalt" ? "vertraege" : it.kategorieId); }
