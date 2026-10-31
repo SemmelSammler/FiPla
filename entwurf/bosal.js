@@ -96,7 +96,7 @@
   var PALETTES = [["violett", "Violett", "#6A5AE0", "#EB4F78"], ["ozean", "Ozean", "#1E6FD9", "#18B6A6"], ["wald", "Wald", "#2F7D4F", "#A3B83A"], ["koralle", "Koralle", "#E2574C", "#F2A93B"], ["sand", "Sand", "#9A7652", "#D9A86C"],
     ["beere", "Beere", "#B0306A", "#7A3FD1"], ["mint", "Mint", "#13A58A", "#7DD3A8"], ["petrol", "Petrol", "#0E6E80", "#3AA0C8"], ["gold", "Gold", "#B8860B", "#E8A33A"], ["graphit", "Graphit", "#3F4656", "#8A93A6"]];
   var MODES = [["hell", "Hell"], ["dunkel", "Dunkel"], ["system", "Wie System"]];
-  var ui = { lay_monat: "a", lay_offen: "b", modal: firstRun ? { type: "welcome" } : null, palette: "violett", mode: "hell", custom: null, view: "monat", repMonth: null, shareMode: true, sortOpen: false, skipped: {}, toast: null, addArt: "forderung", showDone: false };
+  var ui = { inclFix: true, lay_monat: "a", lay_offen: "b", modal: firstRun ? { type: "welcome" } : null, palette: "violett", mode: "hell", custom: null, view: "monat", repMonth: null, shareMode: true, sortOpen: false, skipped: {}, toast: null, addArt: "forderung", showDone: false };
 
   /* ---------- Hilfen ---------- */
   var fmt = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -385,10 +385,18 @@
     var itemOf = function (id) { return state.expected.find(function (i) { return i.id === id; }); };
     var istGeteilt = function (it) { return it && it.typ !== "Einnahme" && it.geteilt; };
     var factor = 1;
-    if (share && ui.inclFix) {
-      var G = 0; txs.forEach(function (t) { if (t.match && t.betrag < 0 && istGeteilt(itemOf(t.itemId))) G += -t.betrag; });
+    if (share) {
+      // Verteilt wird auf die geplanten geteilten Kosten des Monats (auch wenn noch nicht alle abgebucht sind)
+      var gItems = state.expected.filter(function (i) { return i.aktiv && istGeteilt(i) && Math.abs(sollOf(mk, i)) > 0.005; });
+      var G = gItems.reduce(function (s2, i) { return s2 + Math.abs(sollOf(mk, i)); }, 0);
+      info.fixNamenAlle = gItems.map(function (i) { return i.beschreibung; }).join(", ");
       var E = state.transactions.filter(function (t) { var it = itemOf(t.itemId); return t.effMonat === mk && t.match && t.betrag > 0 && it && (it.anteilVon != null ? it.anteilVon : /anteil/i.test(it.beschreibung)); }).reduce(function (s2, t) { return s2 + t.betrag; }, 0);
+      // Noch nicht überwiesen (z. B. am Monatsanfang)? Dann mit dem geplanten Betrag rechnen
+      var erstItems = state.expected.filter(function (i) { return i.aktiv && i.typ === "Einnahme" && (i.anteilVon != null ? i.anteilVon : /anteil/i.test(i.beschreibung)); });
+      if (!E) E = erstItems.reduce(function (s2, i) { return s2 + Math.max(0, sollOf(mk, i)); }, 0);
+      info.fixG = G; info.erstName = erstItems.map(function (i) { return i.beschreibung; }).join(", ");
       if (G > 0 && E > 0) { factor = Math.max(0, (G - E) / G); info.fixErst = Math.min(E, G); }
+      info.factor = factor;
     }
     txs.forEach(function (t) {
       if (t.betrag >= 0 || (t.match && !ui.inclFix)) return;            // Alltag; feste Posten nur auf Wunsch
@@ -399,7 +407,7 @@
       var v = t.betrag;
       if (share) state.offen.forEach(function (o) { if (o.art === "forderung" && o.txId === t.id) { v += o.betrag; info.geteilt += o.betrag; } });
       if (share && t.split) { v += t.split.betrag; info.geteilt += t.split.betrag; }
-      if (share && t.match) {
+      if (share && t.match && ui.inclFix) {
         var it = itemOf(t.itemId);
         if (istGeteilt(it) && factor < 1) { info.fixAnteil += v - v * factor; if (info.fixNamen.indexOf(it.beschreibung) === -1) info.fixNamen.push(it.beschreibung); v = v * factor; }
         else if (it && it.anteil != null && it.anteil < 1) { info.fixAnteil += v - v * it.anteil; v = v * it.anteil; }
@@ -739,7 +747,8 @@
     if (R.info.kk) notes.push("Kreditkarten-Abrechnung " + eur(-R.info.kk) + " ausgeblendet" + (R.info.kkDetail ? ". Die einzelnen Kartenzahlungen aus der Kreditkarten-CSV sind drin." : ". Für diesen Monat fehlt die Kreditkarten-CSV, die Kartenzahlungen fehlen deshalb."));
     var sumCard = '<div class="card"><div class="card-head"><h2>Wofür ging dein Geld im ' + mName(mk) + "?</h2>" + tog + "</div>" +
       '<div class="rep-total"><span class="num">' + eur(R.total) + '</span><span class="muted small">' + (ui.shareMode ? "dein Anteil · voll wären es " + eur(Rf.total) : "alle Buchungen voll gezählt") + "</span></div>" +
-      fixTog + bars + (notes.length ? '<ul class="notes">' + notes.map(function (n) { return "<li>" + esc(n) + "</li>"; }).join("") + "</ul>" : "") +
+      fixTog + (ui.shareMode && R.info.fixErst ? '<div class="rep-split"><b>Geteilte Fixkosten in ' + mName(mk) + '</b><ul class="mini-list"><li><span>' + esc(R.info.fixNamenAlle) + "</span>" + money(-R.info.fixG) + "</li><li><span>" + esc(R.info.erstName) + " (zahlt dir)</span>" + money(R.info.fixErst) + '</li><li class="rs-tot"><span>= dein Teil</span>' + money(-R.info.fixG + R.info.fixErst) + "</li></ul>" +
+        (ui.inclFix ? '<p class="muted small">So zählen diese Posten unten in den Kategorien.</p>' : '<p class="muted small">Unten noch nicht drin: „feste Posten mitzählen“ anhaken.</p>') + "</div>" : "") + bars + (notes.length ? '<ul class="notes">' + notes.map(function (n) { return "<li>" + esc(n) + "</li>"; }).join("") + "</ul>" : "") +
       (un ? '<div class="sortcta">' + un + " Buchungen ohne Kategorie " + btn("Jetzt sortieren →", "sortOpen", "", "btn-primary btn-sm") + "</div>" : "") + "</div>";
     var txs = R.txs.filter(function (t) { return t.betrag < 0; }).sort(function (a, b) { return a.datum < b.datum ? 1 : -1; });
     var txCard = '<div class="card"><h2>Ausgaben-Buchungen <span class="cnt">' + txs.length + '</span></h2><p class="muted small">Mit anderen bezahlt? Auf „Teilen“ tippen, dann zählt nur dein Anteil und die Person steht unter „Mir geschuldet“.</p><ul class="txl">' +
@@ -750,6 +759,7 @@
         var tagTxt = isKK(t) ? "Kreditkarten-Abrechnung" : (t.konto === "kk" ? "Karte · " : "") + (so ? (so.art === "ruecklage" ? "Rücklage" : "erledigt: " + so.text) : isUnsorted(t) ? "Unsortiert" : c.name + (it ? " · fester Posten „" + it.beschreibung + "“" : ""));
         return '<li class="tx"><span class="tx-d">' + dLabel(t.datum) + '</span><span class="tx-main"><span class="tx-e">' + esc((t.empfaenger || "").split("/")[0]) + '</span><span class="tx-k"><i style="background:' + (isUnsorted(t) ? "var(--warn)" : c.farbe) + '"></i>' + esc(tagTxt) +
           (shared.length ? " · geteilt mit " + esc(shared.map(function (o) { return o.person; }).join(", ")) + ", dein Teil " + eur(t.betrag + shared.reduce(function (s, o) { return s + o.betrag; }, 0)) : "") +
+          (ui.shareMode && t.match && R.info.factor < 1 && (function () { var it2 = state.expected.find(function (i) { return i.id === t.itemId; }); return it2 && it2.typ !== "Einnahme" && it2.geteilt; })() ? " · dein Teil " + eur(t.betrag * R.info.factor) + " (" + esc(R.info.erstName) + " verteilt)" : "") +
           (t.split ? " · geteilt" + (t.split.person ? " mit " + esc(t.split.person) : "") + " (nur Auswertung), dein Teil " + eur(t.betrag + t.split.betrag) : "") + "</span></span>" +
           money(t.betrag) + (isKK(t) || so ? "<span></span>" : btn(t.split || shared.length ? "Geteilt ✎" : "Teilen", "teilen", ' data-t="' + t.id + '"', "btn-sm" + (t.split || shared.length ? " btn-ghost" : ""))) + "</li>";
       }).join("") + "</ul>" + (txs.length > 40 && !ui.txAll ? btn("Alle " + txs.length + " zeigen", "txAll", "", "btn-sm") : "") + "</div>";

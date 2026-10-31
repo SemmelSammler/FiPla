@@ -29,6 +29,12 @@
   // Einnahmen/Fixkosten live aus dem Monat (Korrektur 6)
   // Welche festen Posten zählen für die Zukunft (gespeichert, neue Posten zählen automatisch)
   function picked(c, i) { var p = c.state.fi.pick; return !p || p[i.id] !== false; }
+  // Wert eines Postens für die Zukunft (pro Monat, dein Anteil): eigene Anpassung gilt nur hier, sonst Wert aus dem Monat
+  function zWert(c, mk, i) {
+    var o = (c.state.fi.zWert || {})[i.id];
+    if (o != null) return i.typ === "Einnahme" ? o : -o;
+    return i.typ === "Einnahme" ? c.sollOf(mk, i) : c.proMonat(mk, i);
+  }
   function monthValues(c, a) {
     var mk = zu.src || c.L.nextMonth(c.state.active);   // Standard: nächster Monat, ohne Besonderheiten des laufenden
     var items = c.state.expected.filter(function (i) { return i.aktiv && i.typ !== "Schulden"; });
@@ -37,7 +43,7 @@
       if (i.typ === "Einnahme" && i.anteilVon == null) i.anteilVon = /anteil/i.test(i.beschreibung);
       if (i.typ === "Fixkosten" && i.geteilt == null) i.geteilt = /miete|strom|internet|gas\b|wasser|nebenkosten|rundfunk/i.test(i.beschreibung);
     });
-    var on = items.filter(function (i) { return picked(c, i); }), v = function (i) { return i.typ === "Einnahme" ? c.sollOf(mk, i) : c.proMonat(mk, i); };
+    var on = items.filter(function (i) { return picked(c, i); }), v = function (i) { return zWert(c, mk, i); };
     var sum = function (l) { return Math.round(l.reduce(function (s, i) { return s + Math.abs(v(i)); }, 0) * 100) / 100; };
     var lohn = sum(on.filter(function (i) { return i.typ === "Einnahme" && !i.anteilVon; })), erst = sum(on.filter(function (i) { return i.typ === "Einnahme" && i.anteilVon; }));
     var geteilt = sum(on.filter(function (i) { return i.typ === "Fixkosten" && i.geteilt; })), allein = sum(on.filter(function (i) { return i.typ === "Fixkosten" && !i.geteilt; }));
@@ -67,32 +73,8 @@
         return '<button class="chip' + (v === zu.year ? " on" : "") + '" data-act="zSetYear" data-y="' + v + '">' + v + (v === r.fiJahr ? " · frei" : "") + "</button>";
       }).join("") + "</div>" + sparAbCtl(c, c.state.fi) + "</div>";
 
-    /* Schritt 3 */
-    var ev = y.events, pd = y.eventPaid;
-    var evTxt = ev < 0 ? "bezahlt aus " + [pd.etf ? "ETF-Depot " + eur0(pd.etf) : "", pd.ng ? "Notgroschen " + eur0(pd.ng) : "", pd.hek ? "Haus-EK " + eur0(pd.hek) : "", pd.kind ? "Kinder-Sparen " + eur0(pd.kind) : "", pd.fehl ? "⚠ Kredit " + eur0(pd.fehl) : ""].filter(Boolean).join(", ") : ev > 0 ? "kommt in den ETF" : "";
-    var s3 = step(null, "Wie wächst dein Vermögen?", "Bestände am Ende jedes Jahres",
-      stackChart(years, zu.year, r.fiJahr) +
-      '<div class="z-legend small"><span><i style="background:var(--c-etf)"></i>ETF (+' + pct(a.etfRendite) + ')</span><span><i style="background:var(--c-hek)"></i>Haus-EK</span><span><i style="background:var(--c-kind)"></i>Kinder-Sparen</span><span><i style="background:var(--c-ng)"></i>Notgroschen</span><span><i style="background:var(--c-kfw)"></i>KfW-Schulden</span></div>' +
-      '<ul class="calc">' + (ev ? row("Anschaffungen " + y.jahr, ev, evTxt) : "") + row("Für die Freiheit (Notgroschen + ETF)", y.fiCap) + row("Zweckgebunden (Haus-EK + Kinder-Sparen)", y.hausEk + y.kind) + row("KfW-Schulden", y.kfw1 + y.kfw2) + (y.schuld > 0.5 ? row("Offener Kredit aus Anschaffungen", -y.schuld) : "") +
-      '<li class="calc-total"><span>Vermögen Ende ' + y.jahr + "</span>" + money(y.vermoegen) + "</li></ul>");
-
-    /* Schritt 4 */
-    var cap = y.fiCap, ertrag = cap * 0.04, bedarf = y.bedarf * 12, ok = ertrag >= bedarf, p4 = Math.max(0, Math.min(1, ertrag / bedarf));
-    var bed = a.fiBedarf;
-    var s4 = step(null, "Wann bist du frei?", "Die Idee in einem Satz: Dein Erspartes bezahlt deine laufenden Kosten, ohne dass es weniger wird",
-      '<div class="z-explain"><p><b>Die Faustregel:</b> Von deinem Ersparten darfst du jedes Jahr <b>4 %</b> nehmen. Weil das Geld weiter Zinsen bringt, wird es dadurch auf lange Sicht nicht weniger.</p><p><b>Frei bist du</b>, sobald diese 4 % deine laufenden Kosten fürs ganze Jahr bezahlen. Haus-EK und Kinder-Sparen zählen nicht mit, das Geld ist für etwas anderes gedacht.</p></div>' +
-      '<div class="z-bedarf"><span class="small"><b>Was soll dein Erspartes später bezahlen?</b></span><label class="chk2"><input type="checkbox" checked disabled> Fixkosten</label>' +
-      '<label class="chk2"><input type="checkbox" data-act="zBed" data-k="lq"' + (bed.lq ? " checked" : "") + "> Lebensqualität (" + eur0(a.lebensqualitaet) + ")</label>" +
-      '<label class="chk2"><input type="checkbox" data-act="zBed" data-k="auto"' + (bed.auto ? " checked" : "") + "> Auto (" + eur0(a.autoPauschale) + ")</label></div>" +
-      '<div class="z-prog"><div class="z-prog-top"><span><b>' + y.jahr + ":</b> dein Erspartes deckt " + Math.round(p4 * 100) + ' % deiner laufenden Kosten</span><b class="' + (ok ? "pos" : "") + '">' + (ok ? "frei ✓" : "noch nicht frei") + '</b></div><div class="z-prog-bar"><span style="width:' + (p4 * 100).toFixed(1) + '%"></span></div></div>' +
-      '<ul class="calc">' + row("Dein Erspartes für die Freiheit", cap, "Notgroschen + ETF" + (y.schuld > 0.5 ? " − offener Kredit" : "")) + row("4 % davon: so viel darfst du pro Jahr nehmen", ertrag, "= " + eur0(ertrag / 12) + " pro Monat") + row("Deine laufenden Kosten fürs ganze Jahr", -bedarf, eur0(y.bedarf) + " × 12 Monate") +
-      '<li class="calc-total ' + (ok ? "ok" : "") + '"><span>' + (ok ? "Reicht, du bist frei" : "Reicht noch nicht") + "</span>" + (ok ? money(ertrag - bedarf) : '<span class="num neg">es fehlen ' + eur0(bedarf - ertrag) + " pro Jahr</span>") + "</li></ul>" +
-      '<p class="muted small">Damit es reicht, brauchst du ' + eur0(bedarf / 0.04) + " Erspartes für die Freiheit.</p>" + fiChart(years, zu.year, r.fiJahr) +
-      '<div class="z-legend small"><span><i style="background:var(--accent)"></i>so viel darfst du pro Jahr nehmen (4 %)</span><span><i style="background:var(--neg)"></i>so viel kosten deine laufenden Kosten pro Jahr</span></div>');
-
     return '<h1 class="page-t">Zukunft</h1><p class="lead muted">Wann bist du finanziell frei, und wie kommst du dahin? Oben wählst du das Jahr, alles darunter zeigt dieses Jahr.</p>' +
-      '<div class="z-stack"><div class="z-top">' + hero + slider + "</div>" + freiCard(c, a, y, first) + topfCard(c, a, years, r.fiJahr) + events(c, a, r) + annahmen(c, a, r) +
-      '<div class="z-pair">' + s3 + s4 + "</div>" + verteilungCard(c, a, y) + "</div>";
+      '<div class="z-stack"><div class="z-top">' + hero + slider + "</div>" + freiCard(c, a, y, first) + topfCard(c, a, years, r.fiJahr) + events(c, a, r) + annahmen(c, a, r) + verteilungCard(c, a, y) + "</div>";
 
     function row(label, v, hint) { return "<li><span>" + label + (hint ? ' <em class="muted">' + esc(hint) + "</em>" : "") + "</span>" + money(v) + "</li>"; }
     function pct(v) { return c.fmt.format(v * 100).replace(/,00$/, "") + " %"; }
@@ -113,13 +95,13 @@
     var einItems = y.erhoehung ? li(esc(lohnN) + " bis " + bisM, y.einnVor) + li(esc(lohnN) + " ab " + abM, y.einnNach, "+" + pctTxt(c, a.wachstumEinnahmen) + " Gehaltserhöhung") : li(esc(lohnN), y.einnahmen, y.jahr === first ? (mv ? "aus " + c.mLabel(mv.mk, true) : "von Hand eingetragen") : "Deckel " + eur0(Math.max(a.einnahmenDeckel, a.einnahmen)) + " erreicht");
     var ein = box("Deine Einnahmen", einItems, y.erhoehung ? "im Schnitt " + y.jahr : "pro Monat", y.einnahmen, erst.length ? names(erst) + " zählt nicht als Einkommen, sondern senkt eure geteilten Kosten." : "");
     // Fixkosten einzeln: dein Anteil pro Monat (vierteljährlich/jährlich umgerechnet), Preissteigerung als eigene Zeile
-    var pm = function (i) { return Math.abs(c.proMonat(mv.mk, i)); };
+    var pm = function (i) { return Math.abs(zWert(c, mv.mk, i)); };
     var info = function (i) { return [i.anteil != null && i.anteil < 1 ? "dein Anteil " + Math.round(i.anteil * 100) + " %" : "", i.rhythmus && i.rhythmus !== "monatlich" ? i.rhythmus + " " + eur(Math.abs(i.betrag)) : "", i.platzhalter ? "Platzhalter" : ""].filter(Boolean).join(" · "); };
     var fixItems;
     if (mv) {
       var byVal = function (l) { return l.slice().sort(function (x, z) { return pm(z) - pm(x); }); };
       fixItems = (get.length || erst.length ? '<li class="zf-grp">Mit Laura geteilt</li>' + byVal(get).map(function (i) { return li(esc(i.beschreibung), pm(i), info(i)); }).join("") +
-          erst.map(function (i) { return '<li class="zf-minus"><span>' + esc(i.beschreibung) + '<em class="muted">zahlt dir ' + esc(i.beschreibung.replace(/^mietanteil\s*/i, "") || "jemand") + "</em></span><span class=\"num\">− " + eur(Math.abs(c.sollOf(mv.mk, i))) + "</span></li>"; }).join("") +
+          erst.map(function (i) { return '<li class="zf-minus"><span>' + esc(i.beschreibung) + '<em class="muted">zahlt dir ' + esc(i.beschreibung.replace(/^mietanteil\s*/i, "") || "jemand") + "</em></span><span class=\"num\">− " + eur(Math.abs(zWert(c, mv.mk, i))) + "</span></li>"; }).join("") +
           li("= dein Teil davon", mv.meinGeteilt, mv.geteilt ? Math.round(mv.meinGeteilt / mv.geteilt * 100) + " % von " + eur(mv.geteilt) : "", "zf-mine") + '<li class="zf-grp">Nur deine</li>' : "") +
         byVal(allein).map(function (i) { return li(esc(i.beschreibung), pm(i), info(i)); }).join("") +
         (y.fixkosten - mv.fix > 0.5 ? li("Preissteigerung seit " + first, y.fixkosten - mv.fix, "+" + pctTxt(c, a.wachstumFix) + " pro Jahr auf alles, höchstens " + eur0(Math.max(a.fixkostenDeckel, a.fixkosten))) : "");
@@ -309,17 +291,27 @@
           var inp = '<input class="in-num" inputmode="decimal" data-act="zFi" data-k="' + f[0] + '" data-t="' + f[2] + '"' + (f[2] === "mk" ? ' placeholder="MM.JJJJ"' : "") + ' value="' + (v == null || v === "" ? "" : f[2] === "mk" ? mkTxt(v) : f[2] === "%" ? c.fmt.format(v * 100) : (f[2][0] === "j" || f[2] === "mon") ? v : c.fmt.format(v)) + '">';
           return "<div><dt>" + f[1] + (lock ? ' <em class="muted small">aus dem Monat</em>' : "") + "</dt><dd>" + (zu.edit && !lock ? inp : '<span class="num">' + shown + "</span>") + "</dd></div>";
         }).join("") + "</dl></div>";
-      }).join("") + "</div>" + fromMonth(c, a) + "</div>";
+      }).join("") + "</div>" + bedarfBox(c, a) + fromMonth(c, a) + "</div>";
     return html;
   }
 
+  // Was soll dein Erspartes später bezahlen? (bestimmt, ab wann du finanziell frei bist)
+  function bedarfBox(c, a) {
+    var bed = a.fiBedarf, eur0 = c.eur0;
+    return '<div class="z-bedarf"><span class="small"><b>Finanziell frei heißt:</b> 4 % deines Ersparten (Notgroschen + ETF) bezahlen pro Jahr deine laufenden Kosten. Welche zählen dazu?</span>' +
+      '<label class="chk2"><input type="checkbox" checked disabled> Fixkosten</label>' +
+      '<label class="chk2"><input type="checkbox" data-act="zBed" data-k="lq"' + (bed.lq ? " checked" : "") + "> Lebensqualität (" + eur0(a.lebensqualitaet) + ")</label>" +
+      '<label class="chk2"><input type="checkbox" data-act="zBed" data-k="auto"' + (bed.auto ? " checked" : "") + "> Auto (" + eur0(a.autoPauschale) + ")</label></div>";
+  }
   function fromMonth(c, a) {
     var src = c.state.fi, mv = monthValues(c, a), months = c.months(), eur = c.eur;
-    function line(i, tag) {
-      var val = Math.abs(i.typ === "Einnahme" ? c.sollOf(mv.mk, i) : c.proMonat(mv.mk, i));
+    function line(i, tag, minus) {
+      var val = Math.abs(zWert(c, mv.mk, i)), ov = (src.zWert || {})[i.id] != null;
       var info = [i.anteil != null && i.anteil < 1 ? "dein Anteil " + Math.round(i.anteil * 100) + " %" : "", i.rhythmus && i.rhythmus !== "monatlich" ? i.rhythmus + " " + c.eur(Math.abs(i.betrag)) : "", i.platzhalter ? "Platzhalter" : ""].filter(Boolean).join(" · ");
       tag = (tag || "") + (info ? '<em class="fm-info">' + info + "</em>" : "");
-      return '<div class="fm-i' + (picked(c, i) ? "" : " off") + '"><input type="checkbox" data-act="zPick" data-id="' + i.id + '"' + (picked(c, i) ? " checked" : "") + ' aria-label="mitrechnen"> <span>' + c.esc(i.beschreibung) + "</span>" + (tag || "") + '<span class="num muted">' + eur(val) + "</span></div>";
+      return '<div class="fm-i' + (picked(c, i) ? "" : " off") + '"><input type="checkbox" data-act="zPick" data-id="' + i.id + '"' + (picked(c, i) ? " checked" : "") + ' aria-label="mitrechnen"> <span>' + c.esc(i.beschreibung) + "</span>" + (tag || "") +
+        '<span class="fm-v">' + (minus ? '<span class="fm-minus">−</span>' : "") + '<input class="in-num fm-val' + (ov ? " ov" : "") + '" inputmode="decimal" data-act="zVal" data-id="' + i.id + '" value="' + c.fmt.format(val) + '" aria-label="Betrag pro Monat">' +
+        (ov ? '<button class="fm-reset" data-act="zValReset" data-id="' + i.id + '" title="zurück auf den Wert aus dem Monat">↺</button>' : '<span class="fm-reset"></span>') + "</span></div>";
     }
     function sw(i, k, labelOn, labelOff) { return '<button class="fm-tag' + (i[k] ? " on" : "") + '" data-act="zTag" data-id="' + i.id + '" data-k="' + k + '" title="umschalten">' + (i[k] ? labelOn : labelOff) + "</button>"; }
     var ein = mv.items.filter(function (i) { return i.typ === "Einnahme"; }), fix = mv.items.filter(function (i) { return i.typ === "Fixkosten"; });
@@ -332,12 +324,12 @@
       '</div><div><h4>Deine Fixkosten</h4>' +
       (geteilt.length || erst.length ? '<div class="fm-grp"><div class="fm-grp-h">Geteilte Kosten</div>' + geteilt.map(function (i) { return line(i, sw(i, "geteilt", "geteilt", "nur ich")); }).join("") +
         '<div class="fm-sub"><span>zusammen</span><span class="num">' + eur(mv.geteilt) + "</span></div>" +
-        erst.map(function (i) { return line(i, sw(i, "anteilVon", "Anteil von anderen", "mein Geld")).replace('<span class="num muted">', '<span class="num muted">− '); }).join("") +
+        erst.map(function (i) { return line(i, sw(i, "anteilVon", "Anteil von anderen", "mein Geld"), true); }).join("") +
         '<div class="fm-sub fm-mine"><span>dein Anteil' + (pct ? " (" + pct + " %)" : "") + '</span><span class="num">' + eur(mv.meinGeteilt) + "</span></div></div>" : "") +
       '<div class="fm-grp"><div class="fm-grp-h">Nur deine</div>' + allein.map(function (i) { return line(i, sw(i, "geteilt", "geteilt", "nur ich")); }).join("") +
         '<div class="fm-sub"><span>zusammen</span><span class="num">' + eur(mv.allein) + "</span></div></div>" +
       '<div class="fm-sum"><span>Fixkosten (dein Anteil)</span>' + eur(mv.fix) + "</div></div></div>" +
-      '<p class="muted small">Mit Häkchen wird der Posten mitgerechnet. Die kleinen Schalter sortieren um: „geteilt“ ↔ „nur ich“, „mein Geld“ ↔ „Anteil von anderen“. ' +
+      '<p class="muted small"><b>Beträge änderbar:</b> Tipp einen Betrag an und ändere ihn. Das gilt nur für die Zukunft, der Monat bleibt gleich. Geänderte Beträge sind markiert, ↺ setzt sie zurück. Mit Häkchen wird der Posten mitgerechnet. Die kleinen Schalter sortieren um: „geteilt“ ↔ „nur ich“, „mein Geld“ ↔ „Anteil von anderen“. ' +
       "Frei pro Monat bleibt gleich. Es ändert sich, was als Einkommen wächst und was dein Erspartes später bezahlen muss.</p>";
     return '<div class="fm-box"><div class="fm-head"><b>Einnahmen & Fixkosten</b><div class="seg seg-sm"><button class="seg-b' + (src.ausMonat ? " on" : "") + '" data-act="zAus" data-v="1">aus dem Monat</button><button class="seg-b' + (!src.ausMonat ? " on" : "") + '" data-act="zAus" data-v="0">von Hand</button></div></div>' +
       (src.ausMonat ? '<div class="fm-b"><label class="fm-m"><span>Monat</span><select data-act="zSrc">' + months.map(function (m) { return '<option value="' + m + '"' + (m === mv.mk ? " selected" : "") + ">" + c.mLabel(m, true) + "</option>"; }).join("") + "</select></label>" + body +
@@ -388,38 +380,6 @@
       c.btn("＋ Anschaffung", "zEvAdd", "", "btn-sm") + "</div>";
   }
 
-  /* ---------- Diagramme (unverändert, Überarbeitung folgt) ---------- */
-  function scale(years, vals) {
-    var W = 640, H = 220, P = 30, minY = Math.min(0, Math.min.apply(null, vals)), maxY = Math.max.apply(null, vals);
-    return { W: W, H: H, P: P, minY: minY, maxY: maxY, X: function (i) { return P + (i / (years.length - 1)) * (W - P * 2); }, Y: function (v) { return H - P - ((v - minY) / (maxY - minY || 1)) * (H - P * 2); } };
-  }
-  function marks(s, years, sel, fiJ) {
-    var out = "", si = years.findIndex(function (y) { return y.jahr === sel; }), fi = years.findIndex(function (y) { return y.jahr === fiJ; });
-    if (fi >= 0) out += '<line class="ch-fi" x1="' + s.X(fi) + '" x2="' + s.X(fi) + '" y1="' + s.P + '" y2="' + (s.H - s.P) + '"/><text class="ch-lbl" x="' + (s.X(fi) + 6) + '" y="' + (s.P + 4) + '">frei ' + fiJ + "</text>";
-    if (si >= 0) out += '<line class="ch-sel" x1="' + s.X(si) + '" x2="' + s.X(si) + '" y1="' + s.P + '" y2="' + (s.H - s.P) + '"/>';
-    [0, Math.floor((years.length - 1) / 2), years.length - 1].forEach(function (i) { out += '<text class="ch-x" x="' + s.X(i) + '" y="' + (s.H - 8) + '" text-anchor="middle">' + years[i].jahr + "</text>"; });
-    if (s.minY < 0) out += '<line class="ch-zero" x1="' + s.P + '" x2="' + (s.W - s.P) + '" y1="' + s.Y(0) + '" y2="' + s.Y(0) + '"/>';
-    return out;
-  }
-  function stackChart(years, sel, fiJ) {
-    var tops = years.map(function (y) { return Math.max(0, y.notgroschen) + y.kind + y.hausEk + Math.max(0, y.etf); }), bots = years.map(function (y) { return y.kfw1 + y.kfw2 + Math.min(0, y.etf); });
-    var s = scale(years, tops.concat(bots));
-    function area(lo, hi, cls) {
-      var up = years.map(function (y, i) { return s.X(i).toFixed(1) + " " + s.Y(hi(y)).toFixed(1); }), dn = years.map(function (y, i) { return s.X(i).toFixed(1) + " " + s.Y(lo(y)).toFixed(1); }).reverse();
-      return '<path class="' + cls + '" d="M' + up.join(" L") + " L" + dn.join(" L") + ' Z"/>';
-    }
-    var ng = function (y) { return Math.max(0, y.notgroschen); }, k = function (y) { return ng(y) + y.kind; }, h = function (y) { return k(y) + y.hausEk; };
-    return '<svg class="chart z-chart" viewBox="0 0 ' + s.W + " " + s.H + '" preserveAspectRatio="none" role="img" aria-label="Vermögensentwicklung">' +
-      area(function () { return 0; }, ng, "a-ng") + area(ng, k, "a-kind") + area(k, h, "a-hek") + area(h, function (y) { return h(y) + Math.max(0, y.etf); }, "a-etf") +
-      area(function (y) { return y.kfw1 + y.kfw2 + Math.min(0, y.etf); }, function () { return 0; }, "a-kfw") + marks(s, years, sel, fiJ) + "</svg>";
-  }
-  function fiChart(years, sel, fiJ) {
-    var e = years.map(function (y) { return Math.max(0, y.fiCap * 0.04); }), b = years.map(function (y) { return y.bedarf * 12; });
-    var s = scale(years, e.concat(b));
-    function line(vals, cls) { return '<path class="' + cls + '" d="' + vals.map(function (v, i) { return (i ? "L" : "M") + s.X(i).toFixed(1) + " " + s.Y(v).toFixed(1); }).join(" ") + '"/>'; }
-    return '<svg class="chart z-chart" viewBox="0 0 ' + s.W + " " + s.H + '" preserveAspectRatio="none" role="img" aria-label="FI-Test">' + line(b, "l-bedarf") + line(e, "l-ertrag") + marks(s, years, sel, fiJ) + "</svg>";
-  }
-
   /* ---------- Ereignisse ---------- */
   function handle(c, act, d) {
     var a = c.state.fi; ensure(a);
@@ -430,6 +390,7 @@
     if (act === "zVlInhalt") { zu.vlInhalt = d.m; return true; }
     if (act === "zAus") { c.mark("Quelle für Startwerte geändert"); if (d.v === "0" && a.ausMonat) { var mv = monthValues(c, a); a.einnahmen = mv.ein; a.fixkosten = mv.fix; } a.ausMonat = d.v === "1"; return true; }
     if (act === "zSparSofort") { c.mark("Sparstart: sofort"); a.sparAb = null; return true; }
+    if (act === "zValReset") { c.mark("Betrag zurückgesetzt"); if (a.zWert) delete a.zWert[d.id]; return true; }
     if (act === "zTag") { var it = c.state.expected.find(function (x) { return x.id === d.id; }); c.mark("Posten umsortiert"); it[d.k] = !it[d.k]; return true; }
     if (act === "zEvAdd") { c.mark("Anschaffung hinzugefügt"); (a.events = a.events || []).push({ jahr: new Date().getFullYear() + 1, monat: 1, beschreibung: "Neue Anschaffung", betrag: -1000 }); return true; }
     if (act === "zEvDel") { c.mark("Anschaffung gelöscht"); a.events.splice(+d.i, 1); return true; }
@@ -440,6 +401,7 @@
     if (act === "zYear") { zu.year = +el.value; zu.vlStart = null; return true; }
     if (act === "zVtM") { zu.vtMonat = +el.value; return true; }
     if (act === "zSrc") { zu.src = el.value; return true; }
+    if (act === "zVal") { var nv = c.parseNum(el.value); if (isNaN(nv)) return true; c.mark("Betrag für die Zukunft geändert"); (a.zWert = a.zWert || {})[el.dataset.id] = Math.abs(nv); return true; }
     if (act === "zPick") { c.mark("Posten für die Zukunft " + (el.checked ? "an" : "aus")); (a.pick = a.pick || {})[el.dataset.id] = el.checked; return true; }
     if (act === "zBed") { c.mark("Lebensbedarf geändert"); a.fiBedarf[el.dataset.k] = el.checked; return true; }
     if (act === "zEv") {

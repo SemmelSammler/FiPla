@@ -260,3 +260,6 @@ body { padding-top: 0; }
 }
 @media (max-width: 560px) { .mc-three, .mc-strip { grid-template-columns: 1fr; } .mc-num { font-size: 38px; } }
 .st-mode { margin: 4px 0 12px; }
+.rep-split { background: var(--surface2); border-radius: 14px; padding: 10px 14px; margin: 10px 0 14px; }
+.rep-split .mini-list li.rs-tot { font-weight: 800; border-top: 1px solid var(--line-strong); }
+.rep-split p { margin: 4px 0 0; }

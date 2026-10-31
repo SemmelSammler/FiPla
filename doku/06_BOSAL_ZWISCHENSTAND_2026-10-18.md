@@ -245,3 +245,13 @@ Umschalter oben rechts in Monat und Offen. **Entscheidung (Testversion 23): Mona
 - Teilen hat zwei Arten: „Person zahlt mir zurück“ (offener Posten wie bisher) oder „Nur für die
   Auswertung“ (`tx.split`, kein offener Posten, wirkt nur auf „Mein Anteil“, wieder entfernbar).
 - Mehr → Feste Posten: „Durch Anteil anderer gedeckt?“ bzw. „Anteil von anderen?“ einstellbar.
+
+## Testversion 25
+
+- Ausgaben: Kasten „Geteilte Fixkosten“ (geplante geteilte Posten − Anteil anderer = dein Teil), an jeder
+  betroffenen Buchung „dein Teil … (Mietanteil verteilt)“. Verteilt wird auf die geplanten Beträge des
+  Monats; ist der Anteil noch nicht überwiesen, zählt der geplante Betrag. „feste Posten mitzählen“ ist
+  jetzt standardmäßig an.
+- Zukunft: Beträge unter „Einnahmen & Fixkosten“ direkt änderbar (`fi.zWert`, nur für die Zukunft,
+  ↺ zurück). Diagramm-Karten „Wie wächst dein Vermögen?“ und „Wann bist du frei?“ entfernt; die Auswahl,
+  was das Ersparte später bezahlen soll, steht jetzt in „Deine Annahmen“.
