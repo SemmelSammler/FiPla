@@ -3,7 +3,7 @@ html.is-phone { --on-accent: #FFFFFF; --m-pad: 20px; }
 html.is-phone[data-mode="dark"] { --on-accent: #111216; }
 html.is-phone body { background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
 html.is-phone .app { display: block; max-width: none; min-height: 100vh; }
-html.is-phone .main { padding: calc(env(safe-area-inset-top, 0px) + 14px) var(--m-pad) calc(112px + env(safe-area-inset-bottom, 0px)); }
+html.is-phone .main { padding: calc(env(safe-area-inset-top, 0px) + 14px) var(--m-pad) calc(112px + env(safe-area-inset-bottom, 0px)) !important; }   /* !important: basis.css setzt unter 760px sonst 8px oben und lässt die Statusleiste außer Acht */
 html.is-phone .num { font-variant-numeric: tabular-nums; }
 html.is-phone .pos { color: var(--pos); }
 html.is-phone .neg { color: var(--neg); }
