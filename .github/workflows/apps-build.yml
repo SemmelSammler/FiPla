@@ -1,10 +1,13 @@
 # Baut die Desktop-Apps von Obol: Windows (Installer .exe) und Mac (.dmg, läuft auf Intel und Apple-Chip).
-# Start: GitHub → Actions → "Apps bauen" → "Run workflow" (läuft nur auf Knopfdruck, spart Freiminuten).
-# Ergebnis: unten im Lauf als Artefakte "Obol-Windows" und "Obol-Mac" herunterladen.
+# Start: automatisch, wenn sich etwas in src-tauri/ ändert (z. B. die Version in tauri.conf.json hochzählen).
+# Sonst nicht, das spart Freiminuten. Ergebnis: unten im Lauf als "Obol-Windows" und "Obol-Mac" herunterladen.
 name: Apps bauen
 
 on:
   workflow_dispatch:
+  push:
+    branches: [claude/adoring-babbage-ofozq5]
+    paths: ["src-tauri/**", ".github/workflows/apps-build.yml"]
 
 jobs:
   windows:
