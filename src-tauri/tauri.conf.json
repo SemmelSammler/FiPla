@@ -1,21 +1,21 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Finanzplanung",
-  "version": "0.1.0",
-  "identifier": "de.finanzplanung.desktop",
+  "productName": "Obol",
+  "version": "0.2.0",
+  "identifier": "de.obol.app",
   "build": {
-    "frontendDist": "../dist/native",
-    "beforeDevCommand": "npm run build",
-    "beforeBuildCommand": "npm run build"
+    "frontendDist": "../web",
+    "beforeDevCommand": "node bosal/build.cjs",
+    "beforeBuildCommand": "node bosal/build.cjs"
   },
   "app": {
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Finanzplanung",
-        "width": 1440,
-        "height": 900,
-        "minWidth": 700,
+        "title": "Obol",
+        "width": 1360,
+        "height": 880,
+        "minWidth": 380,
         "minHeight": 600,
         "center": true,
         "resizable": true,
@@ -28,11 +28,12 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app"],
-    "resources": ["bin/touchid-helper"],
-    "fileAssociations": [
-      { "ext": ["csv"], "description": "CSV-Kontoauszug", "role": "Viewer" },
-      { "ext": ["tsv"], "description": "TSV-Kontoauszug", "role": "Viewer" }
+    "targets": [
+      "app",
+      "dmg"
+    ],
+    "resources": [
+      "bin/touchid-helper"
     ],
     "icon": [
       "icons/32x32.png",
@@ -43,6 +44,10 @@
     ],
     "android": {
       "debugApplicationIdSuffix": ".debug"
+    },
+    "macOS": {
+      "signingIdentity": "-",
+      "minimumSystemVersion": "11.0"
     }
   }
 }

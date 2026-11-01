@@ -364,9 +364,17 @@
       ui.modal = null; toast("Backup geladen: " + o.transactions.length + " Buchungen.");
     }).catch(function (e) { toast("Backup nicht geladen: " + (e && e.message || e)); });
   });
+  // Desktop-App (Tauri): Speichern über den Dialog des Betriebssystems, Menü-Einträge lösen Aktionen aus
+  var TAURI = window.__TAURI__ && window.__TAURI__.core ? window.__TAURI__ : null;
   function exportBackup() {
+    var name = "obol-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+    if (TAURI) {
+      TAURI.core.invoke("save_file_dialog", { contents: JSON.stringify(state, null, 1), defaultName: name })
+        .then(function (p) { if (p) toast("Backup gespeichert."); }, function (e) { toast("Backup nicht gespeichert: " + e); });
+      return;
+    }
     var blob = new Blob([JSON.stringify(state, null, 1)], { type: "application/json" }), a = document.createElement("a");
-    a.href = URL.createObjectURL(blob); a.download = "bosal-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+    a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   }
 
@@ -1298,7 +1306,7 @@
     if (a === "skipImport") { ui.modal.step = 2; ui.modal.importMsg = "Ohne neuen Import. Bereits abgebuchte Fixkosten, die noch nicht importiert sind, zählen doppelt."; render(); return; }
     if (a === "startEcht") { state = makeState("echt"); state.angelegt = true; hist.past = []; hist.future = []; ui.view = "monat"; ui.modal = { type: "kassensturz", step: 1 }; render(); return; }
     if (a === "welcome") { ui.modal = { type: "welcome" }; render(); return; }
-    if (a === "exportBackup") { exportBackup(); toast("Backup wird gespeichert (Ordner Downloads)."); return; }
+    if (a === "exportBackup") { exportBackup(); if (!TAURI) toast("Backup wird gespeichert (Ordner Downloads)."); return; }
     if (a === "loadBackup") { backupIn.click(); return; }
     if (a === "resetAll") { if (!window.confirm("Wirklich alle deine Daten in diesem Browser löschen? Speichere vorher ein Backup.")) return; try { localStorage.removeItem(STORE); } catch (er) {} state = makeState("demo"); hist.past = []; hist.future = []; ui.view = "monat"; ui.modal = { type: "welcome" }; render(); return; }
     if (a === "haken") {
@@ -1458,6 +1466,13 @@
   document.addEventListener("keydown", function (e) {
     if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z" || e.target.matches("input,textarea")) return;
     e.preventDefault(); if (e.shiftKey) redo(); else undo();
+  });
+  if (TAURI && TAURI.event) TAURI.event.listen("menu", function (e) {
+    var id = String(e.payload || "");
+    if (id === "csv-import") { if (state.modus !== "echt") { ui.modal = { type: "welcome" }; render(); } else csvIn.click(); }
+    else if (id === "backup-export") exportBackup();
+    else if (id === "backup-import") backupIn.click();
+    else if (id.indexOf("view:") === 0) { ui.view = id.slice(5); ui.month = null; ui.modal = null; window.scrollTo(0, 0); render(); }
   });
   render();
   setTimeout(function () { syncPull(); }, 400);

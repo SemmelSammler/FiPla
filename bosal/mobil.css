@@ -128,3 +128,6 @@ html.is-phone .m-foot-wrap { flex-wrap: wrap; }
 
 /* Statusleiste (Uhrzeit, Akku) bekommt einen eigenen Hintergrund, damit der Inhalt beim Scrollen nicht darunter durchläuft */
 .m-notch { position: fixed; top: 0; left: 0; right: 0; z-index: 45; height: env(safe-area-inset-top, 0px); background: var(--bg); pointer-events: none; }
+
+/* Markenzeichen neben dem Namen: der Eulenkopf */
+html .brand .brand-mark { width: 30px; height: 30px; border-radius: 8px; transform: none; background: url(icons/favicon-64.png) center / cover no-repeat; }

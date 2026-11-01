@@ -294,16 +294,13 @@ async fn pick_backup(app: tauri::AppHandle) -> Result<Option<String>, String> {
   }
 }
 
-/// Die 8 Sidebar-Bereiche in Sidebar-Reihenfolge (⌘1–⌘8), IDs wie in ui-core.js
-const VIEWS: [(&str, &str); 8] = [
-  ("dashboard", "Dashboard"),
+/// Die Bereiche von Obol in Reihenfolge (⌘1–⌘5), IDs wie in bosal/bosal.js
+const VIEWS: [(&str, &str); 5] = [
   ("monat", "Monat"),
-  ("import", "CSV-Import"),
-  ("posten", "Posten & Kategorien"),
-  ("fi", "FI-Planung"),
-  ("hauskauf", "Hauskauf"),
-  ("kinder", "Kinder"),
-  ("backup", "Backup & Einstellungen"),
+  ("offen", "Offen"),
+  ("ausgaben", "Ausgaben"),
+  ("zukunft", "Zukunft"),
+  ("mehr", "Mehr"),
 ];
 
 /// Natives Menüband. Eigene Einträge melden sich per Event "menu" im Frontend,
@@ -312,22 +309,22 @@ fn build_menu(app: &tauri::App) -> tauri::Result<()> {
   let h = app.handle();
 
   let about = AboutMetadata {
-    name: Some("Finanzplanung".into()),
+    name: Some("Obol".into()),
     version: Some("0.1.0".into()),
     comments: Some("Finanz-Cockpit — FI-Planung, Budget & Szenarien".into()),
     ..Default::default()
   };
-  let app_sub = SubmenuBuilder::new(h, "Finanzplanung")
-    .item(&PredefinedMenuItem::about(h, Some("Über Finanzplanung"), Some(about))?)
+  let app_sub = SubmenuBuilder::new(h, "Obol")
+    .item(&PredefinedMenuItem::about(h, Some("Über Obol"), Some(about))?)
     .separator();
   // Ausblenden gibt es nur unter macOS
   #[cfg(target_os = "macos")]
   let app_sub = app_sub
-    .item(&PredefinedMenuItem::hide(h, Some("Finanzplanung ausblenden"))?)
+    .item(&PredefinedMenuItem::hide(h, Some("Obol ausblenden"))?)
     .item(&PredefinedMenuItem::hide_others(h, Some("Andere ausblenden"))?)
     .separator();
   let app_sub = app_sub
-    .item(&PredefinedMenuItem::quit(h, Some("Finanzplanung beenden"))?)
+    .item(&PredefinedMenuItem::quit(h, Some("Obol beenden"))?)
     .build()?;
 
   let datei = SubmenuBuilder::new(h, "Datei")
