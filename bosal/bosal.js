@@ -861,7 +861,7 @@
         '<li class="' + (m.step < 2 ? "dim" : "") + '"><b>2 · Kontostände von jetzt eintragen</b>' + (m.step >= 2 ? (function () { var v = state.transactions.filter(isVg); return v.length && !state.vgImSaldo ? '<p class="muted small">Girokonto: den Kontostand (Sichteinlagen) eintragen. Die ' + v.length + " vorgemerkten Umsätze (" + eur(v.reduce(function (s2, t) { return s2 + t.betrag; }, 0)) + ") zieht BoSal selbst ab.</p>" : ""; })() + '<div class="konten">' +
           kontoField("giro", "Girokonto", state.konten.giro) + kontoField("konto2", "2. Konto", state.konten.konto2) + kontoField("kk", "Kreditkarte (offen, negativ)", state.konten.kk) + "</div>" : "") + "</li></ol>" +
         '<div class="m-foot">' + btn("Abbrechen", "closeModal", "", "btn-ghost") + (m.step >= 2 ? btn("Fertig", "finishKS", "", "btn-primary") : "") + "</div>";
-      if (m.step >= 2 && vs.length) body = body.replace("</ol>", '<li><b>3 · Danach</b><p class="muted small">' + vs.length + " Buchung(en) passen zu offenen Posten. Du bestätigst sie gleich auf der Monatsseite.</p></li></ol>");
+      if (m.step >= 2 && vs.length) body = body.replace("</ol>", '<li><b>3 · Danach</b><p class="muted small">' + vs.length + " Buchung(en) passen zu offenen Posten. Du bestätigst sie gleich " + (isPhone() ? "unter Offen" : "auf der Monatsseite") + ".</p></li></ol>");
     }
     if (m.type === "syncConnect") {
       body = "<h2>Mit Schlüssel verbinden</h2><p class=\"muted\">Den Schlüssel findest du auf deinem anderen Gerät unter Mehr → Abgleich → Schlüssel zeigen.</p>" +
@@ -973,7 +973,7 @@
 
   function mMonat() {
     if (ui.month && ui.month > state.active) return viewVorschau(ui.month);
-    var R = rechnung(), mk = R.mk, p = R.parts, sync = syncState(), vs = vorschlaege();
+    var R = rechnung(), mk = R.mk, p = R.parts;
     var y = +mk.slice(0, 4), mo = +mk.slice(5, 7), last = new Date(y, mo, 0).getDate();
     var tage = mk < CUR ? 0 : mk === CUR ? last - now.getDate() + 1 : last;
     var offenSum = p.forderung + p.schuld + p.schwebend + p.ruecklage + p.geplant + p.uebertrag;
@@ -982,30 +982,20 @@
       '<span class="m-sub">' + (R.hasKonten ? (tage ? "≈ " + eur(R.total / tage) + " pro Tag · noch " + tage + " Tage" : "") : "Mach einen Kassensturz, dann rechnet BoSal.") + "</span>" +
       (R.hasKonten ? '<div class="m-stats">' + stat("Konten", p.konten + p.vorgemerkt) + stat("Feste Posten", p.ein + p.fix + p.carry, true) + stat("Offene Posten", offenSum, true) + "</div>" : "") + "</section>";
 
-    // Zu tun: nur was jetzt wirklich ansteht
-    var todo = [];
-    if (!sync.ok) todo.push('<li><span class="m-chip warn">!</span><div class="m-main"><span class="m-t">Kassensturz</span><span class="m-s">' + esc(sync.ack ? "Kontostand ohne neuen Import" : !state.importAt && state.konten.giro == null ? "noch keiner in diesem Monat" : !state.importAt ? "Import fehlt" : "Kontostände fehlen") + "</span></div>" + '<button class="m-act" data-act="kassensturz">Jetzt</button></li>');
-    vs.forEach(function (v) { todo.push('<li><span class="m-chip pos">✓</span><div class="m-main"><span class="m-t">' + esc((v.o.person ? v.o.person + ": " : "") + v.o.text) + '</span><span class="m-s">erledigt? ' + dLabel(v.t.datum) + " · " + eur(v.t.betrag) + '</span></div><button class="m-act" data-act="settle" data-o="' + v.o.id + '" data-t="' + v.t.id + '">Ja</button></li>'); });
-    var un = state.transactions.concat(state.kk.filter(function (t) { return !t.ausgleich; })).filter(function (t) { return t.effMonat === mk && isUnsorted(t); }).length;
-    if (un) todo.push('<li><span class="m-chip">' + un + '</span><div class="m-main"><span class="m-t">Ohne Kategorie</span><span class="m-s">' + un + (un === 1 ? " Buchung" : " Buchungen") + " im " + mName(mk) + '</span></div><button class="m-act" data-act="mSort">Sortieren</button></li>');
-    var ps = personSaldi()[0];
-    if (ps && Math.abs(ps.v) >= 1) todo.push('<li><span class="m-chip">' + esc(ps.name.slice(0, 1).toUpperCase()) + '</span><div class="m-main"><span class="m-t">' + esc(ps.v > 0 ? ps.name + " schuldet dir" : "Du schuldest " + ps.name) + '</span><span class="m-s">' + eur(Math.abs(ps.v)) + " · " + ps.n + (ps.n === 1 ? " Posten" : " Posten") + "</span></div>" + '<button class="m-act" data-act="mPerson" data-p="' + esc(ps.name) + '">Ansehen</button></li>');
-    var todoHtml = '<h2 class="m-h2">Zu tun</h2><ul class="m-list">' + (todo.length ? todo.slice(0, 4).join("") : '<li><span class="m-s">Alles erledigt.</span></li>') + "</ul>";
-
-    // Als Nächstes: feste Posten nach Tag, offene zuerst
+    // Feste Posten nach Tag, offene zuerst
     function hits(it) { return (it.kk ? state.kk : state.transactions).filter(function (t) { return t.itemId === it.id; }).sort(function (a, b) { return a.datum < b.datum ? 1 : -1; }); }
     var rows = R.c.rows.filter(function (r) { return Math.abs(r.soll) > 0.005 || Math.abs(r.ist) > 0.005; }).map(function (r) {
       var h = hits(r.item), inM = h.find(function (t) { return t.effMonat === mk; }), day = h[0] ? +h[0].datum.slice(8, 10) : 32;
       return { r: r, done: Math.abs(rest(r)) < 0.005, day: day, inM: inM };
     }).sort(function (a, b) { return (a.done - b.done) || (a.day - b.day); });
     var offenN = rows.filter(function (x) { return !x.done; }).length, show = ui.mAlleFest ? rows : rows.filter(function (x) { return !x.done; }).slice(0, 4);
-    var festHtml = '<h2 class="m-h2"><span>Als Nächstes</span><span class="m-h2-r">' + (rows.length - offenN) + " von " + rows.length + " erledigt</span></h2>" +
+    var festHtml = '<h2 class="m-h2"><span>Feste Posten</span><span class="m-h2-r">' + (rows.length - offenN) + " von " + rows.length + " erledigt</span></h2>" +
       '<ul class="m-list">' + (show.length ? show.map(function (x) {
         var it = x.r.item, d = Math.min(x.day, last), sub = x.done ? (x.inM ? (isVg(x.inM) ? "vorgemerkt " : "abgebucht ") + dLabel(x.inM.datum) : x.r.hand != null ? "von Hand abgehakt" : "erledigt") : x.day < 32 ? WT[new Date(y, mo - 1, d).getDay()] + ", " + d + ". " + MON[mo - 1] : "noch offen";
         return '<li class="m-tickrow' + (x.done ? " done" : "") + '"><button class="m-tick' + (x.done ? " on" : "") + '" data-act="haken" data-id="' + it.id + '" aria-pressed="' + x.done + '" aria-label="' + esc(it.beschreibung) + (x.done ? " ist erledigt" : " abhaken") + '"><i>' + (x.done ? "✓" : "") + "</i></button>" +
           '<div class="m-main"><span class="m-t">' + esc(it.beschreibung) + '</span><span class="m-s">' + esc(sub) + "</span></div>" + mAmt(x.r.soll) + "</li>";
       }).join("") : '<li><span class="m-s">Alle festen Posten sind erledigt.</span></li>') + "</ul>" +
-      (rows.length > show.length || ui.mAlleFest ? '<button class="m-more" data-act="mAlleFest">' + (ui.mAlleFest ? "Nur offene zeigen" : "Alle " + rows.length + " festen Posten") + "</button>" : "");
+      (rows.length > show.length || ui.mAlleFest ? '<button class="m-more" data-act="mAlleFest">' + (ui.mAlleFest ? "Nur offene zeigen" : "Alle " + rows.length + " anzeigen") + "</button>" : "");
 
     // So rechnet BoSal: die ganze Rechnung, dazu die Kontostände
     function line(l, v) { return Math.abs(v) < 0.005 ? "" : "<li><span class=\"m-t2\">" + l + "</span>" + mAmt(v) + "</li>"; }
@@ -1025,7 +1015,7 @@
 
     var cap = (state.kontoAt ? "Kassensturz " + mWann(state.kontoAt) : "Noch kein Kassensturz") + (state.startedEarly ? " · früh gestartet" : "");
     var monthBtns = (state.prevCtx ? '<button class="m-link" data-act="reopenAsk">← ' + mName(state.prevCtx.mk) + "</button>" : "") + '<button class="m-link" data-act="startNext">' + mName(L.nextMonth(mk)) + " starten →</button>";
-    return mHead(mName(mk), mIb("kassensturz", "Kassensturz machen", ICON.sync), cap) + hero + todoHtml + festHtml + '<div class="m-gap"></div>' + calc + kommend + '<div class="m-monthbtns">' + monthBtns + "</div>";
+    return mHead(mName(mk), mIb("kassensturz", "Kassensturz machen", ICON.sync), cap) + hero + festHtml + '<div class="m-gap"></div>' + calc + kommend + '<div class="m-monthbtns">' + monthBtns + "</div>";
   }
 
   function mOffen() {
@@ -1054,8 +1044,10 @@
         if (ui.editO === o.id) return oEdit(o);
         return '<li class="done"><button class="m-main" data-act="editO" data-o="' + o.id + '"><span class="m-t">' + esc((o.person ? o.person + " · " : "") + o.text) + '</span><span class="m-s">' + esc(o.erledigtWie || "erledigt") + "</span></button>" + mAmt(signOf(o) * o.betrag) + '<button class="m-act" data-act="reopenItem" data-o="' + o.id + '">Öffnen</button></li>';
       }).join("") + "</ul>" : "") : "";
+    var vs = vorschlaege();
+    var vsHtml = vs.length ? '<h2 class="m-h2">Schon bezahlt?</h2><ul class="m-list">' + vs.map(function (v) { return '<li><span class="m-chip pos">✓</span><div class="m-main"><span class="m-t">' + esc((v.o.person ? v.o.person + ": " : "") + v.o.text) + '</span><span class="m-s">' + dLabel(v.t.datum) + " · " + eur(v.t.betrag) + '</span></div><button class="m-act" data-act="settle" data-o="' + v.o.id + '" data-t="' + v.t.id + '">Ja</button></li>'; }).join("") + "</ul>" : "";
     var cap = all.length ? 'Du bekommst <b class="pos">' + eur(bek) + "</b> · du zahlst <b>" + eur(zahl) + "</b>" : "Nichts offen.";
-    return mHead("Offen", mIb("mNeu", "Neu eintragen", ICON.plus.replace(/26/g, "20")), cap) + tiles + mit + ohneHtml + doneHtml;
+    return mHead("Offen", mIb("mNeu", "Neu eintragen", ICON.plus.replace(/26/g, "20")), cap) + vsHtml + tiles + mit + ohneHtml + doneHtml;
   }
 
   /* Neu eintragen: Blatt von unten, Betrag über den Ziffernblock */
@@ -1241,7 +1233,7 @@
     document.documentElement.classList.toggle("is-phone", phone);
     if (phone) {
       var main = ui.view === "monat" ? mMonat() : ui.view === "offen" ? mOffen() : RENDER[ui.view]();
-      document.getElementById("app").innerHTML = '<main class="main">' + main + "</main>" + mTabbar() + mSheet() + modal() + (ui.toast ? '<div class="toast" role="status">' + esc(ui.toast) + "</div>" : "");
+      document.getElementById("app").innerHTML = '<div class="m-notch" aria-hidden="true"></div><main class="main">' + main + "</main>" + mTabbar() + mSheet() + modal() + (ui.toast ? '<div class="toast" role="status">' + esc(ui.toast) + "</div>" : "");
       window.scrollTo(0, y); save(); return;
     }
     document.getElementById("app").innerHTML =

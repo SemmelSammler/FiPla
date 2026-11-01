@@ -125,3 +125,6 @@ html.is-phone .m-foot-wrap { flex-wrap: wrap; }
 .m-foot-wrap { display: flex; gap: 8px; justify-content: flex-end; }
 .m-field input:focus, .m-field select:focus { outline: none; }
 .m-field:focus-within { box-shadow: 0 0 0 2px var(--accent); }
+
+/* Statusleiste (Uhrzeit, Akku) bekommt einen eigenen Hintergrund, damit der Inhalt beim Scrollen nicht darunter durchläuft */
+.m-notch { position: fixed; top: 0; left: 0; right: 0; z-index: 45; height: env(safe-area-inset-top, 0px); background: var(--bg); pointer-events: none; }
