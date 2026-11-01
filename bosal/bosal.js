@@ -1,4 +1,4 @@
-/* BoSal: Budgetmonat, Kassensturz, offene Posten, Ausgaben nach Anteil, Zukunft.
+/* Obol: Budgetmonat, Kassensturz, offene Posten, Ausgaben nach Anteil, Zukunft.
    Rechnet mit der Engine aus logic.js. Deine Daten liegen nur im Browser bzw. verschlüsselt im Abgleich,
    nie im Code. Beispieldaten gibt es nur, wenn seed.js mitgebaut wird (lokal zum Ausprobieren). */
 (function () {
@@ -358,7 +358,7 @@
   var backupIn = fileInput(".json,application/json", false, function (files) {
     files[0].text().then(function (txt) {
       var o = JSON.parse(txt);
-      if (!o || !Array.isArray(o.transactions) || !Array.isArray(o.expected) || !o.fi) throw new Error("Das ist kein BoSal-Backup.");
+      if (!o || !Array.isArray(o.transactions) || !Array.isArray(o.expected) || !o.fi) throw new Error("Das ist kein Obol-Backup.");
       o.modus = "echt"; o.kk = o.kk || []; o.importLog = o.importLog || [];
       mark("Backup geladen"); Object.keys(state).forEach(function (k) { delete state[k]; }); Object.keys(o).forEach(function (k) { state[k] = o[k]; });
       ui.modal = null; toast("Backup geladen: " + o.transactions.length + " Buchungen.");
@@ -492,14 +492,14 @@
 
     var hero = '<div class="card hero"><div class="hero-label">Übrig bis Ende ' + mName(mk) + "</div>" +
       '<div class="hero-num num">' + (R.hasKonten ? eur(R.total) : "?") + "</div>" +
-      '<div class="hero-sub">' + (R.hasKonten ? (sync.ok ? "Kontostände und Import passen zusammen." : "Achtung: " + esc(sync.title)) : "Trag deine Kontostände ein, dann rechnet BoSal.") + "</div></div>";
+      '<div class="hero-sub">' + (R.hasKonten ? (sync.ok ? "Kontostände und Import passen zusammen." : "Achtung: " + esc(sync.title)) : "Trag deine Kontostände ein, dann rechnet Obol.") + "</div></div>";
 
     var wf = '<div class="card wf"><h2>So setzt sich das zusammen</h2>' +
       line("konten", "Geld auf deinen Konten", p.konten, R.hasKonten ? "Giro, 2. Konto, Kreditkarte" : "noch nicht eingetragen", kontenDetail) +
       (R.vg.length ? line("vorgemerkt", "Vorgemerkt, noch nicht im Kontostand", p.vorgemerkt, R.vg.length + " Umsätze aus dem Import" + (state.vgImSaldo ? " · schon im Kontostand" : ""),
         '<ul class="mini-list">' + R.vg.map(function (t) { return "<li><span>" + dLabel(t.datum) + " " + esc((t.empfaenger || t.text || "").split("/")[0]) + "</span>" + money(t.betrag) + "</li>"; }).join("") + "</ul>" +
         '<label class="chk"><input type="checkbox" data-act="vgSaldo"' + (state.vgImSaldo ? " checked" : "") + "> Mein eingetragener Kontostand enthält die vorgemerkten Umsätze schon</label>" +
-        '<p class="muted small">Sparkasse: Der Kontostand (Sichteinlagen) enthält nur gebuchte Umsätze. Deshalb zieht BoSal die vorgemerkten hier ab.</p>') : "") +
+        '<p class="muted small">Sparkasse: Der Kontostand (Sichteinlagen) enthält nur gebuchte Umsätze. Deshalb zieht Obol die vorgemerkten hier ab.</p>') : "") +
       line("ein", "Kommt noch rein", p.ein, R.einOffen.length + " feste Einnahmen", itemList(R.einOffen)) +
       line("fix", "Geht noch ab", p.fix, R.fixOffen.length + " Fixkosten und Raten noch nicht abgebucht", itemList(R.fixOffen)) +
       (R.carry.length ? line("carry", "Aus " + mName(L.prevMonth(mk)) + " noch offen", p.carry, "fällt weg, sobald die Abbuchung importiert ist", itemList(R.carry)) : "") +
@@ -542,7 +542,7 @@
     var tage = (function () { if (mk < CUR) return 0; var y = +mk.slice(0, 4), m = +mk.slice(5, 7), last = new Date(y, m, 0).getDate(); return mk === CUR ? last - now.getDate() + 1 : last; })();
     var proTag = R.hasKonten && tage ? R.total / tage : null;
     var heroB = '<div class="card hero mb-hero"><div class="hero-label">Übrig bis Ende ' + mName(mk) + '</div><div class="hero-num num">' + (R.hasKonten ? eur(R.total) : "?") + "</div>" +
-      '<div class="hero-sub">' + (proTag != null ? "≈ <b>" + eur(proTag) + "</b> pro Tag · noch " + tage + " Tage" : R.hasKonten ? "" : "Trag deine Kontostände ein, dann rechnet BoSal.") + "</div></div>";
+      '<div class="hero-sub">' + (proTag != null ? "≈ <b>" + eur(proTag) + "</b> pro Tag · noch " + tage + " Tage" : R.hasKonten ? "" : "Trag deine Kontostände ein, dann rechnet Obol.") + "</div></div>";
     function tile(label, v, sub, act) { return '<button class="card mb-tile"' + (act ? ' data-act="' + act + '"' : " disabled") + '><span class="mb-tl">' + label + "</span>" + money(v) + '<span class="mb-ts muted small">' + sub + "</span></button>"; }
     var tilesB = '<div class="mb-tiles">' + heroB +
       tile("Auf den Konten", p.konten + p.vorgemerkt, R.hasKonten ? (p.vorgemerkt ? "nach " + eur(p.vorgemerkt) + " vorgemerkt" : "Giro, 2. Konto, Karte") : "noch nicht eingetragen", "kassensturz") +
@@ -569,7 +569,7 @@
       var v = vorschau(m);
       return '<li><button class="linkrow" data-act="openMonth" data-month="' + m + '"><span>' + mLabel(m) + '</span><span class="mb-bar"><i class="' + (v.total < 0 ? "neg" : "") + '" style="width:' + (Math.abs(v.total) / maxV * 100).toFixed(1) + '%"></i></span>' + money(v.total) + "</button></li>";
     }).join("") + "</ul></div>";
-    var rechnungB = '<details class="card mb-calc" data-key="mbcalc"' + (ui.open_mbcalc ? " open" : "") + '><summary><h2>So rechnet BoSal</h2><span class="muted small">aufklappen</span></summary>' + wf.replace('<div class="card wf"><h2>So setzt sich das zusammen</h2>', '<div class="wf">') + "</details>";
+    var rechnungB = '<details class="card mb-calc" data-key="mbcalc"' + (ui.open_mbcalc ? " open" : "") + '><summary><h2>So rechnet Obol</h2><span class="muted small">aufklappen</span></summary>' + wf.replace('<div class="card wf"><h2>So setzt sich das zusammen</h2>', '<div class="wf">') + "</details>";
     if (ui.lay_monat === "b") return head + banner + tilesB + '<div class="grid-m mb-grid"><div class="col">' + fahrplan + rechnungB + '</div><div class="col">' + vsCard + kontenCard + offenCard + kommendB + "</div></div>";
 
     /* ---------- Ansicht C „Rechnung“: die Gleichung als Treppe, darunter die drei Listen ---------- */
@@ -581,7 +581,7 @@
       var top = (hi - Math.max(c2.a, c2.b)) / span * 100, h = Math.max(1.5, Math.abs(c2.b - c2.a) / span * 100);
       return '<div class="mc-col"><div class="mc-area"><span class="mc-bar ' + (c2.k ? "tot" : c2.v < 0 ? "neg" : "pos") + '" style="top:' + top.toFixed(1) + "%;height:" + h.toFixed(1) + '%"></span><span class="mc-zero" style="top:' + ((hi - 0) / span * 100).toFixed(1) + '%"></span></div>' +
         '<b class="num">' + (c2.k ? "" : c2.v > 0 ? "+" : "−") + eur(Math.abs(c2.v)).replace(" €", "") + '</b><span class="muted small">' + esc(c2.l) + "</span></div>";
-    }).join("") + "</div>" : '<p class="muted">Trag deine Kontostände ein, dann zeichnet BoSal die Rechnung.</p>';
+    }).join("") + "</div>" : '<p class="muted">Trag deine Kontostände ein, dann zeichnet Obol die Rechnung.</p>';
     var gleichung = '<div class="card mc-head"><div class="mc-top"><div><div class="hero-label">Übrig bis Ende ' + mName(mk) + '</div><div class="mc-num num ' + (R.total < 0 ? "neg" : "") + '">' + (R.hasKonten ? eur(R.total) : "?") + "</div>" +
       (proTag != null ? '<div class="muted small">≈ ' + eur(proTag) + " pro Tag · noch " + tage + " Tage</div>" : "") + '</div><div class="konten mc-konten">' +
       kontoField("giro", "Girokonto", state.konten.giro) + kontoField("konto2", "2. Konto", state.konten.konto2) + kontoField("kk", "Kreditkarte", state.konten.kk) + "</div></div>" + treppe + "</div>";
@@ -858,7 +858,7 @@
         '<ol class="steps"><li class="' + (state.importAt && m.step > 1 ? "done" : "") + '"><b>1 · Kontoauszug importieren</b>' +
         (m.step === 1 ? (state.modus === "echt" ? '<p class="muted small">Sparkasse → Umsätze → Export → <b>CSV-CAMT</b>. Die Kreditkarten-CSV kannst du gleich mit auswählen (nur für „Ausgaben“).</p>' + btn("CSV-Dateien auswählen", "pickCsv", "", "btn-primary") + btn("Heute ohne Import", "skipImport", "", "btn-ghost")
           : '<p class="muted small">Beispieldaten: Hier lädt ein Beispiel-Import.</p>' + btn("Beispiel-Import laden", "doImport", "", "btn-primary")) : '<p class="muted small">' + esc(m.importMsg || "").replace(/\n/g, "<br>") + "</p>") + "</li>" +
-        '<li class="' + (m.step < 2 ? "dim" : "") + '"><b>2 · Kontostände von jetzt eintragen</b>' + (m.step >= 2 ? (function () { var v = state.transactions.filter(isVg); return v.length && !state.vgImSaldo ? '<p class="muted small">Girokonto: den Kontostand (Sichteinlagen) eintragen. Die ' + v.length + " vorgemerkten Umsätze (" + eur(v.reduce(function (s2, t) { return s2 + t.betrag; }, 0)) + ") zieht BoSal selbst ab.</p>" : ""; })() + '<div class="konten">' +
+        '<li class="' + (m.step < 2 ? "dim" : "") + '"><b>2 · Kontostände von jetzt eintragen</b>' + (m.step >= 2 ? (function () { var v = state.transactions.filter(isVg); return v.length && !state.vgImSaldo ? '<p class="muted small">Girokonto: den Kontostand (Sichteinlagen) eintragen. Die ' + v.length + " vorgemerkten Umsätze (" + eur(v.reduce(function (s2, t) { return s2 + t.betrag; }, 0)) + ") zieht Obol selbst ab.</p>" : ""; })() + '<div class="konten">' +
           kontoField("giro", "Girokonto", state.konten.giro) + kontoField("konto2", "2. Konto", state.konten.konto2) + kontoField("kk", "Kreditkarte (offen, negativ)", state.konten.kk) + "</div>" : "") + "</li></ol>" +
         '<div class="m-foot">' + btn("Abbrechen", "closeModal", "", "btn-ghost") + (m.step >= 2 ? btn("Fertig", "finishKS", "", "btn-primary") : "") + "</div>";
       if (m.step >= 2 && vs.length) body = body.replace("</ol>", '<li><b>3 · Danach</b><p class="muted small">' + vs.length + " Buchung(en) passen zu offenen Posten. Du bestätigst sie gleich " + (isPhone() ? "unter Offen" : "auf der Monatsseite") + ".</p></li></ol>");
@@ -874,10 +874,10 @@
         '<div class="m-foot m-foot-wrap">' + btn("Stand vom anderen Gerät", "syncTakeRemote", "", "") + btn("Meine Version behalten", "syncKeepMine", "", "btn-primary") + "</div>";
     }
     if (m.type === "welcome") {
-      body = "<h2>Willkommen bei BoSal</h2><ul class=\"startlist\">" +
+      body = "<h2>Willkommen bei Obol</h2><ul class=\"startlist\">" +
         "<li><b>Schon auf einem anderen Gerät?</b> Verbinde dich mit deinem Abgleich-Schlüssel, dann sind deine Daten gleich da.</li>" +
         "<li><b>Neu anfangen:</b> CSV deines Girokontos importieren und Kontostände eintragen.</li>" +
-        "<li><b>Backup:</b> eine gespeicherte BoSal-Datei laden.</li></ul>" +
+        "<li><b>Backup:</b> eine gespeicherte Obol-Datei laden.</li></ul>" +
         '<div class="m-foot m-foot-wrap">' + (S ? btn("Beispieldaten", "closeModal", "", "btn-ghost") : "") + btn("Backup laden", "loadBackup", "", "btn-ghost") + btn("Neu anfangen", "startEcht", "", "") + btn("Mit Schlüssel verbinden", "syncConnectAsk", "", "btn-primary") + "</div>";
     }
     if (m.type === "start") {
@@ -936,7 +936,7 @@
   }
 
   /* ================= iPhone-Ansicht (Design D) ================= */
-  // Auf schmalen Bildschirmen zeigt BoSal Monat und Offen in der Handy-Ansicht, dazu eine Tab-Leiste
+  // Auf schmalen Bildschirmen zeigt Obol Monat und Offen in der Handy-Ansicht, dazu eine Tab-Leiste
   // und „Neu eintragen“ als Blatt von unten. Alle anderen Seiten passen sich nur in der Breite an.
   var PHONE = window.matchMedia ? window.matchMedia("(max-width: 700px)") : { matches: false };
   function isPhone() { return !!PHONE.matches; }
@@ -979,7 +979,7 @@
     var offenSum = p.forderung + p.schuld + p.schwebend + p.ruecklage + p.geplant + p.uebertrag;
     function stat(l, v, sign) { return '<div><span>' + l + '</span><b class="num' + (sign && v > 0.005 ? " pos" : "") + '">' + mNum(v, sign) + "</b></div>"; }
     var hero = '<section class="m-card m-hero"><span class="m-lab">Übrig bis ' + last + ". " + mName(mk) + '</span><span class="m-big num' + (R.hasKonten && R.total < 0 ? " neg" : "") + '">' + (R.hasKonten ? eur(R.total) : "?") + "</span>" +
-      '<span class="m-sub">' + (R.hasKonten ? (tage ? "≈ " + eur(R.total / tage) + " pro Tag · noch " + tage + " Tage" : "") : "Mach einen Kassensturz, dann rechnet BoSal.") + "</span>" +
+      '<span class="m-sub">' + (R.hasKonten ? (tage ? "≈ " + eur(R.total / tage) + " pro Tag · noch " + tage + " Tage" : "") : "Mach einen Kassensturz, dann rechnet Obol.") + "</span>" +
       (R.hasKonten ? '<div class="m-stats">' + stat("Konten", p.konten + p.vorgemerkt) + stat("Feste Posten", p.ein + p.fix + p.carry, true) + stat("Offene Posten", offenSum, true) + "</div>" : "") + "</section>";
 
     // Feste Posten nach Tag, offene zuerst
@@ -997,10 +997,10 @@
       }).join("") : '<li><span class="m-s">Alle festen Posten sind erledigt.</span></li>') + "</ul>" +
       (rows.length > show.length || ui.mAlleFest ? '<button class="m-more" data-act="mAlleFest">' + (ui.mAlleFest ? "Nur offene zeigen" : "Alle " + rows.length + " anzeigen") + "</button>" : "");
 
-    // So rechnet BoSal: die ganze Rechnung, dazu die Kontostände
+    // So rechnet Obol: die ganze Rechnung, dazu die Kontostände
     function line(l, v) { return Math.abs(v) < 0.005 ? "" : "<li><span class=\"m-t2\">" + l + "</span>" + mAmt(v) + "</li>"; }
     var k = state.konten;
-    var calc = '<details class="m-card m-calc" data-key="mcalc"' + (ui.open_mcalc ? " open" : "") + '><summary><span>So rechnet BoSal</span>' + ICON.chev + "</summary>" +
+    var calc = '<details class="m-card m-calc" data-key="mcalc"' + (ui.open_mcalc ? " open" : "") + '><summary><span>So rechnet Obol</span>' + ICON.chev + "</summary>" +
       '<ul class="m-plain">' + line("Auf den Konten", p.konten) + line("Vorgemerkt, noch nicht im Kontostand", p.vorgemerkt) + line("Kommt noch rein", p.ein) + line("Geht noch ab", p.fix) + line("Aus " + mName(L.prevMonth(mk)) + " noch offen", p.carry) +
       Object.keys(ART).map(function (a) { return line(ART[a].label, p[a]); }).join("") + line("Zwischen Monaten verschoben", p.uebertrag) +
       '<li class="m-sum"><span class="m-t2">Übrig</span><span class="m-amt num">' + (R.hasKonten ? eur(R.total) : "?") + "</span></li></ul>" +
@@ -1237,7 +1237,7 @@
       window.scrollTo(0, y); save(); return;
     }
     document.getElementById("app").innerHTML =
-      '<header class="top"><div class="brand"><span class="brand-mark" aria-hidden="true"></span>BoSal</div><div class="top-r"><button class="ur" data-act="undo"' + (hist.past.length ? ' title="Rückgängig: ' + esc(hist.past[hist.past.length - 1].label) + '"' : " disabled") + ' aria-label="Rückgängig">↶</button>' +
+      '<header class="top"><div class="brand"><span class="brand-mark" aria-hidden="true"></span>Obol</div><div class="top-r"><button class="ur" data-act="undo"' + (hist.past.length ? ' title="Rückgängig: ' + esc(hist.past[hist.past.length - 1].label) + '"' : " disabled") + ' aria-label="Rückgängig">↶</button>' +
       '<button class="ur" data-act="redo"' + (hist.future.length ? ' title="Wiederholen: ' + esc(hist.future[hist.future.length - 1].label) + '"' : " disabled") + ' aria-label="Wiederholen">↷</button>' +
       '<button class="ur" data-act="palOpen" aria-label="Farbpalette">🎨</button>' + (state.modus === "echt" ? (state.angelegt === false ? '<button class="mode-b" data-act="welcome">Einrichten</button>' : "") : '<button class="mode-b" data-act="welcome">Beispieldaten · eigene Daten nutzen</button>') + '' + (ui.palOpen ? palettePicker() : "") + "</div></header>" +
       '<nav class="nav" aria-label="Bereiche">' + nav + '</nav><main class="main">' + RENDER[ui.view]() + "</main>" + modal() +

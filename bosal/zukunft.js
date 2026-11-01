@@ -1,4 +1,4 @@
-/* BoSal — Zukunft mit der korrigierten Rechnung (fiplan.js). Die alte Rechnung (Logic.runFI)
+/* Obol — Zukunft mit der korrigierten Rechnung (fiplan.js). Die alte Rechnung (Logic.runFI)
    läuft nur noch zum Vergleich mit. */
 (function () {
   "use strict";

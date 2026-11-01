@@ -1,4 +1,4 @@
-// BoSal bauen: node bosal/build.cjs [Zielordner] [--demo]
+// Obol bauen: node bosal/build.cjs [Zielordner] [--demo]
 // Schreibt die App als Web-App in einen Ordner (Standard: web/): index.html, Manifest, Service Worker, Icons.
 // Derselbe Ordner dient als Oberfläche der Desktop-App (Tauri) und wird von Cloudflare Pages ausgeliefert.
 // Ohne --demo enthält die App KEINE Daten: weder seed.js noch persönliche Zukunft-Werte aus defaults.js.
@@ -19,10 +19,10 @@ const version = crypto.createHash("sha256").update(js + css).digest("hex").slice
 
 const html = `<!doctype html><html lang="de" data-design="weich"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>BoSal</title>
+<title>Obol</title>
 <meta name="theme-color" content="#111216">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="BoSal">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Obol">
 <link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><link rel="icon" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <style>${css}</style></head><body><div class="app" id="app"></div>
@@ -31,7 +31,7 @@ const html = `<!doctype html><html lang="de" data-design="weich"><head><meta cha
 </body></html>`;
 
 const manifest = {
-  name: "BoSal", short_name: "BoSal", lang: "de", start_url: "./", scope: "./", display: "standalone",
+  name: "Obol", short_name: "Obol", lang: "de", start_url: "./", scope: "./", display: "standalone",
   background_color: "#111216", theme_color: "#111216",
   icons: [
     { src: "icons/icon-192.png", sizes: "192x192", type: "image/png" },

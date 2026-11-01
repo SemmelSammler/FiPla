@@ -1,4 +1,4 @@
-/* fiplan.js — korrigierte FI-Rechnung für BoSal. Eigene Datei: js/logic.js bleibt unverändert.
+/* fiplan.js — korrigierte FI-Rechnung für Obol. Eigene Datei: js/logic.js bleibt unverändert.
    Rechnet Monat für Monat (Einnahmen und Raten wachsen jährlich), fasst für die Anzeige pro Jahr zusammen.
    Korrekturen gegenüber Logic.runFI:
    1  FI-Test misst den Lebensbedarf (Fixkosten + gewählte laufende Ausgaben)

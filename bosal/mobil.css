@@ -52,7 +52,7 @@ div.m-main { cursor: default; }
 .m-more { display: block; width: 100%; margin-top: 8px; padding: 12px 0; background: none; border: 0; font: inherit; font-size: 15px; font-weight: 600; color: var(--accent); text-align: center; cursor: pointer; }
 .m-gap { height: 24px; }
 
-/* So rechnet BoSal (zum Aufklappen) */
+/* So rechnet Obol (zum Aufklappen) */
 .m-calc { padding: 0 16px; }
 .m-calc > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; min-height: 56px; font-size: 16px; font-weight: 600; cursor: pointer; }
 .m-calc > summary::-webkit-details-marker { display: none; }

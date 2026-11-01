@@ -1,4 +1,4 @@
-/* BoSal-Abgleich: verschlüsselt auf dem Gerät, der Server sieht nur Datensalat.
+/* Obol-Abgleich: verschlüsselt auf dem Gerät, der Server sieht nur Datensalat.
    Ein Schlüssel (20 Zeichen) ergibt drei Dinge: die Ablage-ID, ein Schreib-Token und den AES-Schlüssel.
    Wer den Schlüssel nicht hat, kann die Daten weder lesen noch überschreiben. */
 (function (root) {
